@@ -5,6 +5,7 @@ import { isDialable, speakDate, speakPrice, speakTime } from './parse.js';
 
 const API = 'https://api.bolna.ai';
 const FAILED = new Set(['no-answer', 'busy', 'failed', 'canceled', 'stopped', 'error', 'balance-low']);
+export const ABUSIVE_NEXT_STEP = 'Review: abusive call';
 export const LEAD_STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
 
 export function portfolioBrief(db) {
@@ -115,7 +116,8 @@ export function handleExecutionEvent(db, event) {
 
 function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
   // Safety net: the post-call extraction keeps an opt-out even if the agent never reached update_lead.
-  if (connected && outcome['Do Not Call']?.objective === 'Yes') {
+  const abusive = connected && outcome.Abusive?.objective === 'Yes';
+  if (abusive || (connected && outcome['Do Not Call']?.objective === 'Yes')) {
     db.prepare("UPDATE leads SET do_not_call = 1, status = 'not_interested', status_by = 'asha' WHERE id = ?").run(leadId);
     db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(leadId);
   }
@@ -127,7 +129,7 @@ function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
   if (!engaged) {
     if (['new', 'unreachable'].includes(status)) { status = 'unreachable'; nextAction = 'Retry on another day'; }
   } else if (status === 'not_interested' || doNotCall) {
-    status = 'not_interested'; nextAction = 'None';
+    status = 'not_interested'; nextAction = abusive ? ABUSIVE_NEXT_STEP : 'None';
   } else if (pending('visit')) {
     status = 'hot';
   } else if (pending('callback')) {

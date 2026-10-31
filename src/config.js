@@ -24,6 +24,6 @@ export const config = {
   get publicUrl() { return (process.env.PUBLIC_URL || '').replace(/\/$/, ''); },
   get fromNumber() { return process.env.BOLNA_FROM_NUMBER || ''; },
   get dashboardPassword() { return process.env.DASHBOARD_PASSWORD || ''; },
-  get voiceProfile() { return process.env.VOICE_PROFILE || 'sarvam'; },
+  get voiceProfile() { return process.env.VOICE_PROFILE || 'hinglish'; },
   get dbPath() { return process.env.DB_PATH || path.join(ROOT, 'propreach.db'); },
 };

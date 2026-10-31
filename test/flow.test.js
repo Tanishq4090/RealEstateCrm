@@ -431,7 +431,7 @@ test('every prompt variable is supplied at dial time, and repeat calls carry mem
     const log = [];
     await dialLead(db, leadRow(db, lead), null, okFetch(log));
     const data = log[0].user_data;
-    const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: allProjects(db) });
+    const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', voiceProfile: 'sarvam', projects: allProjects(db) });
     const hindi = agent.agent_config.tasks[0].tools_config.multilingual_config.languages.hi.system_prompt;
     const used = [...`${SYSTEM_PROMPT} ${WELCOME} ${hindi}`.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
     for (const name of new Set(used)) assert.ok(data[name], `missing user_data for {{${name}}}`);
@@ -442,7 +442,7 @@ test('every prompt variable is supplied at dial time, and repeat calls carry mem
 
 test('agent stays inside the limits Bolna enforces', () => {
   const db = fresh();
-  const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 'tool', webhookToken: 'hook', projects: allProjects(db) });
+  const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 'tool', webhookToken: 'hook', voiceProfile: 'sarvam', projects: allProjects(db) });
   const tools = agent.agent_config.tasks[0].tools_config;
   assert.ok(keywordsFor(allProjects(db)).split(', ').length <= 50);
   assert.match(tools.transcriber.keywords, /Sarjapur Residences/);
@@ -797,4 +797,45 @@ test('the activity feed tells the story in the buyer\'s words', () => {
   assert.equal(recentActivity(db)[0].kind, 'optout');
   assert.ok(recentActivity(db).some((s) => s.note), 'sample calls fall back to the AI summary');
   assert.ok(recentActivity(db).length <= 6);
+});
+
+test('one transcriber and one voice cover English, Hindi and Hinglish', () => {
+  const db = fresh();
+  const task = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: allProjects(db) }).agent_config.tasks[0];
+  const tools = task.tools_config;
+  assert.deepEqual([tools.transcriber.provider, tools.synthesizer.provider], ['soniox', 'kalpa']);
+  assert.equal(tools.multilingual_config, undefined);
+  assert.equal(typeof tools.api_tools.tools[0].pre_call_message, 'string');
+  assert.equal(task.task_config.number_of_words_for_interruption, 3);
+  assert.doesNotMatch(tools.transcriber.keywords, /itpl|e city|ecity|kadugodi/i, 'short names caused false interruptions');
+});
+
+test('the prompt and tools stay compact, because they cost time on every turn', () => {
+  const { tools } = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w' }).agent_config.tasks[0].tools_config.api_tools;
+  assert.ok(SYSTEM_PROMPT.length < 3300, `prompt is ${SYSTEM_PROMPT.length} characters`);
+  assert.ok(JSON.stringify(tools).length < 3300, `tools are ${JSON.stringify(tools).length} characters`);
+  for (const word of ['Hinglish', 'ending the call', 'OTP', 'Devanagari']) assert.ok(SYSTEM_PROMPT.includes(word), word);
+});
+
+test('abuse ends in do-not-call and review, and stays off the home page', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  startCall(db, 'b1', lead);
+  bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '11:30 AM' });
+  handleExecutionEvent(db, { id: 'b1', status: 'completed', transcript: 'user: I want to visit but you are a stupid useless bot',
+    summary: 'Customer was abusive.', extracted_data: { 'Lead Outcome': { Abusive: { objective: 'Yes' }, 'Do Not Call': { objective: 'No' } } } });
+  const l = leadRow(db, lead);
+  assert.deepEqual([l.do_not_call, l.status, l.next_action], [1, 'not_interested', 'Review: abusive call']);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM appointments WHERE lead_id = ? AND status = 'scheduled'").get(lead).n, 0);
+  const [story] = recentActivity(db);
+  assert.deepEqual([story.kind, story.quote, story.note], ['abusive', null, null]);
+});
+
+test('frustration alone is not treated as abuse', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  startCall(db, 'b2', lead);
+  handleExecutionEvent(db, { id: 'b2', status: 'completed', transcript: 'user: this is taking long',
+    extracted_data: { 'Lead Outcome': { Abusive: { objective: 'No' }, 'Do Not Call': { objective: 'No' }, 'Lead Status': { objective: 'warm' } } } });
+  assert.deepEqual([leadRow(db, lead).do_not_call, leadRow(db, lead).status], [0, 'warm']);
 });

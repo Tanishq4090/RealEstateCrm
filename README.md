@@ -55,6 +55,7 @@ If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. 
 ## Safeguards
 
 - The agent says it is an AI on a recorded line in its first sentence.
+- It never asks for an OTP, card or ID numbers, and never takes payment. After repeated abuse or any threat it ends the call, and a post-call check puts that lead on the do-not-call list for review.
 - Leads are dialled only with recorded consent, and the server rechecks each lead at the moment of dialling.
 - An opt-out goes straight to the do-not-call list and cancels that buyer's appointments. A post-call extraction catches any opt-out the live agent missed.
 - Campaigns skip anyone called in the last 24 hours or holding a booking. Launching needs confirming, and a running campaign can be stopped: queued calls are cancelled, while calls already ringing or connected finish.
@@ -77,5 +78,5 @@ Secrets live in `.env`, which git ignores. If a key is ever exposed, replace it 
 
 ## Known limits
 
-- Hindi uses Bolna's automatic language switching. It is configured but not yet proven on a live call.
+- Asha mirrors English, Hindi and Hinglish using one transcriber and one voice. If a provider misbehaves, set `VOICE_PROFILE=sarvam` and rerun `npm run setup-agent`.
 - Not built yet: sign-up and multi-builder accounts, brochure ingestion, retry scheduling, and editing existing projects.

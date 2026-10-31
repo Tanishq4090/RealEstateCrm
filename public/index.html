@@ -3,123 +3,124 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PropReach AI</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23185c4e'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
+<title>PropReach</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23a6461a'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff9f3'/></svg>">
 <style>
-:root{color-scheme:light dark;--bg:#f6f5f1;--panel:#fff;--hover:#faf9f5;--ink:#1c2321;--muted:#5f6965;--line:#e4e2db;--field:#8c8a82;
---brand:#185c4e;--on-brand:#fff;--brand-hover:#134b40;--brand-soft:#e2efe9;--badge:#4b5350;--grey-soft:#ececea;
---hot:#b5381f;--hot-soft:#fbe7e1;--warm:#8f5b00;--warm-soft:#faeed4;--warm-line:#efdcae;--cold:#3a6188;--cold-soft:#e3edf6;
---violet:#5d4a9c;--violet-soft:#ebe7f6;--pending:#b87a10;--backdrop:#0006}
-@media (prefers-color-scheme:dark){:root{--bg:#131715;--panel:#1b201e;--hover:#222826;--ink:#e9edea;--muted:#a9b3ae;--line:#2f3633;--field:#7c8782;
---brand:#62c9a7;--on-brand:#0c241d;--brand-hover:#7ad6b7;--brand-soft:#173a30;--badge:#c8cfcb;--grey-soft:#2c3330;
---hot:#ffa48d;--hot-soft:#4a241b;--warm:#efc06e;--warm-soft:#3d2f15;--warm-line:#5a4520;--cold:#a3c8ee;--cold-soft:#1e3245;
---violet:#c8bbf4;--violet-soft:#2f284b;--pending:#efc06e;--backdrop:#000a}}
+:root{color-scheme:light dark;
+  --bg:#fbf6ef;--raise:#fffdf9;--ink:#2b211b;--muted:#6f6055;--line:#eadfd2;--field:#8f7e71;
+  --accent:#a6461a;--accent-hover:#8c3a14;--on-accent:#fff9f3;--accent-soft:#f6e6d8;
+  --hot:#b1361a;--warm:#8a5a06;--callback:#7b4a6b;--cold:#566470;--live:#c8860d;--backdrop:#2b211b59}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#1b1613;--raise:#241d19;--ink:#f3e9de;--muted:#bdae9f;--line:#372d26;--field:#8a7a6d;
+  --accent:#eba877;--accent-hover:#f2bb92;--on-accent:#2b1508;--accent-soft:#3a2619;
+  --hot:#f59a80;--warm:#e9bd6b;--callback:#dcaecb;--cold:#adbcc6;--live:#e9bd6b;--backdrop:#000a}}
 *{box-sizing:border-box}[hidden]{display:none!important}html{font-size:100%;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:.9375rem/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-button,input,select,textarea{font:inherit;color:inherit}a{color:var(--brand)}
-:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-.app{display:grid;grid-template-columns:13.5rem minmax(0,1fr);min-height:100vh}
-nav{background:var(--panel);border-right:1px solid var(--line);padding:1.25rem .75rem;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
-.logo{font-weight:700;font-size:1.125rem;padding:0 .75rem 1.25rem;letter-spacing:-.01em;color:var(--ink)}.logo span{color:var(--muted);font-weight:500}
-#links{display:contents}#links a{display:block;padding:.5625rem .75rem;border-radius:.5rem;color:var(--ink);text-decoration:none;margin-bottom:2px}
-#links a:hover{background:var(--hover)}#links a.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
-#links .short,.phone-only{display:none}
-.status{margin-top:auto;font-size:.8125rem;padding:.75rem;color:var(--muted);white-space:nowrap}
-.dot{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;margin-right:.375rem;background:var(--pending)}.dot.on{background:var(--brand)}
-#signout{background:none;border:1px solid var(--field);padding:.1875rem .5625rem;font-size:.75rem;margin-top:.5rem}
-main{padding:1.75rem 2rem 3.75rem;max-width:77.5rem;width:100%}
-h1{font-size:1.5rem;line-height:1.25;margin:0 0 .25rem;letter-spacing:-.02em}h2{font-size:1rem;margin:0 0 .75rem}
-.sub{color:var(--muted);margin:0 0 1.375rem}.eyebrow{color:var(--muted);font-size:.8125rem;margin:0 0 .125rem}
-.live{display:block;background:var(--brand);color:var(--on-brand);text-decoration:none;padding:.625rem .875rem;border-radius:.625rem;margin-bottom:1.125rem;font-weight:600}
-.live:hover{background:var(--brand-hover)}.live i{display:inline-block;width:.5625rem;height:.5625rem;border-radius:50%;background:var(--on-brand);margin-right:.5625rem;animation:pulse 1.4s infinite}
-@keyframes pulse{50%{opacity:.35}}@media (prefers-reduced-motion:reduce){.live i{animation:none}}
-.notice,.problem{background:var(--warm-soft);border:1px solid var(--warm-line);padding:.625rem .875rem;border-radius:.625rem;margin-bottom:1.125rem;display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.problem{background:var(--panel);border:1px solid var(--ink);font-weight:600}.dlg .problem{margin:.75rem 0 0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:.75rem;padding:1.125rem;margin-bottom:1.125rem}
-.home{display:flex;flex-wrap:wrap;gap:0 2rem;margin-top:1.375rem;align-items:flex-start}.feed{flex:1.6 1 26rem;min-width:0}.side{flex:1 1 20rem;min-width:0}
-.feed h2{font-size:.8125rem;color:var(--muted);font-weight:600;margin:0 0 .25rem}
-.story{padding:1.125rem 0;border-top:1px solid var(--line)}.story .spread{flex-wrap:nowrap;padding:0}.story .spread h3{flex:1;min-width:0}.story h3{font-size:1.0625rem;line-height:1.35;font-weight:600;margin:0}
-.story blockquote{margin:.5rem 0 0;font-size:1.0625rem;line-height:1.45}.story .note{margin:.5rem 0 0;color:var(--muted)}
-.story .facts{margin:.5rem 0 0;font-size:.8125rem;color:var(--muted)}.story time{white-space:nowrap}
-.funnel .row{display:grid;grid-template-columns:6.5rem 1fr 1.75rem 2.625rem;gap:.625rem;align-items:center;margin:.5rem 0;font-size:.875rem}
-.funnel .pct{color:var(--muted);font-size:.8125rem;text-align:right}.funnel p{margin:.875rem 0 0}
-.bar{background:var(--grey-soft);border-radius:.3125rem;height:.875rem;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:.3125rem;min-width:2px}
-.spread{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:0 .75rem;padding:.3125rem 0}
-.next{display:flex;justify-content:space-between;gap:.75rem;padding:.3125rem 0}.next b,.next .small{display:block}.next .when{text-align:right;white-space:nowrap}
-.tablewrap{overflow-x:auto;margin:-.25rem -1.125rem -1.125rem}table{width:100%;border-collapse:collapse;min-width:40rem}
-th{text-align:left;font-size:.75rem;color:var(--muted);font-weight:600;padding:.5625rem .875rem;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:.6875rem .875rem;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}
-tbody tr.click{cursor:pointer}tbody tr.click:hover{background:var(--hover)}tr.fresh td{background:var(--brand-soft)}
-.small{font-size:.8125rem;color:var(--muted)}.nowrap{white-space:nowrap}.clip{max-width:20rem}.reason::first-letter{text-transform:uppercase}
-.badge{display:inline-block;padding:2px .5625rem;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap;background:var(--grey-soft);color:var(--badge)}
-.hot{background:var(--hot-soft);color:var(--hot)}.warm{background:var(--warm-soft);color:var(--warm)}.cold{background:var(--cold-soft);color:var(--cold)}
-.callback_requested{background:var(--violet-soft);color:var(--violet)}.good{background:var(--brand-soft);color:var(--brand)}.overdue{background:var(--ink);color:var(--bg)}
-button{background:var(--panel);border:1px solid var(--field);padding:.4375rem .8125rem;border-radius:.5rem;cursor:pointer}button:hover{border-color:var(--ink)}
-button.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand);font-weight:600}button.primary:hover{background:var(--brand-hover)}button:disabled{opacity:.5;cursor:not-allowed}
-.rowlink{all:unset;font-weight:600;cursor:pointer}.rowlink:hover{text-decoration:underline}.rowlink:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-input,select,textarea{width:100%;padding:.5rem .625rem;border:1px solid var(--field);border-radius:.5rem;background:var(--panel)}input[type=checkbox]{width:auto;margin:0}
-label{display:block;font-size:.8125rem;color:var(--muted);margin-bottom:.625rem}label input,label select,label textarea{margin-top:3px;color:var(--ink)}
-label.check{display:flex;gap:.5rem;align-items:center;color:inherit;margin:.25rem 0;font-size:.9375rem}label.check input{margin:0}
-.toolbar{display:flex;gap:.625rem;margin-bottom:.875rem;flex-wrap:wrap;align-items:center}.toolbar input,.toolbar select{width:auto;flex:0 1 15rem}.spacer{flex:1}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 .875rem}.picks{max-height:10.625rem;overflow:auto;margin-bottom:.75rem}
-.projects{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(18.75rem,100%),1fr));gap:.875rem}.projects .card{margin:0}
-.chips span{display:inline-block;background:var(--grey-soft);border-radius:.375rem;padding:1px .5rem;font-size:.75rem;margin:0 .25rem .25rem 0}
-.units{width:100%;min-width:0;margin:.5rem 0}.units td,.units th{padding:.3125rem 0;border:0}
-dialog{border:0;border-radius:.875rem;padding:0;width:min(45rem,calc(100vw - 2rem));max-height:calc(100vh - 3rem);color:var(--ink);background:var(--panel)}dialog::backdrop{background:var(--backdrop)}
-#ask{width:min(26.25rem,calc(100vw - 2rem))}#ask h2{outline:0;font-size:1.0625rem;margin:0 0 .375rem}#ask p{margin:0 0 1.125rem;color:var(--muted)}
-.actions{display:flex;justify-content:flex-end;gap:.625rem}
-.dlg{padding:1.375rem}.dlg header{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.625rem}.dlg h2.title{font-size:1.25rem;margin:0}
-.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.375rem,1fr));gap:.625rem;margin:.875rem 0}.kv div span{display:block;font-size:.75rem;color:var(--muted)}
-.correct{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin:.875rem 0}.correct label{margin:0;flex:0 1 13rem}
-audio{width:100%;margin:.375rem 0 .75rem}
-.transcript{background:var(--bg);padding:.75rem;border-radius:.5625rem;max-height:18.75rem;overflow:auto;font-size:.875rem}.transcript p{margin:0 0 .5rem}
-.transcript b{color:var(--brand)}.transcript .u b{color:var(--ink)}
-.toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.5625rem 1rem;border-radius:.5625rem;z-index:50;max-width:calc(100vw - 2rem)}
-.empty{color:var(--muted);text-align:center;padding:1.875rem .625rem}
+body{margin:0;background:var(--bg);color:var(--ink);font:1.0625rem/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}a{color:var(--accent);text-underline-offset:.2em}a:hover{color:var(--accent-hover)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:.25rem}
+
+/* Top bar */
+.top{display:flex;align-items:center;gap:2.5rem;max-width:64rem;margin:0 auto;padding:1.5rem 1.5rem 0}
+.mark{font-weight:650;font-size:1.125rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none}.mark:hover{color:var(--ink)}
+#links{display:flex;gap:1.75rem}#links a{color:var(--muted);text-decoration:none;font-size:1rem}#links a:hover{color:var(--ink)}
+#links a.on{color:var(--ink);font-weight:600}.phone-only{display:none}
+.right{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:.9375rem;color:var(--muted)}
+
+/* Page */
+main{max-width:44rem;margin:0 auto;padding:3.5rem 1.5rem 6rem}
+.enter{animation:rise .22s ease-out}@keyframes rise{from{opacity:0;transform:translateY(.25rem)}}
+h1{font-size:2rem;line-height:1.25;font-weight:650;letter-spacing:-.02em;margin:0}
+h2{font-size:.9375rem;line-height:1.4;font-weight:600;color:var(--muted);margin:0 0 .625rem}
+p{margin:0}.eyebrow{color:var(--muted);margin-bottom:.5rem}
+.head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.75rem}.head h1{font-size:1.75rem}
+.meta{color:var(--muted);font-size:.9375rem}.alert{margin-top:1rem;color:var(--muted)}
+.block{margin-top:3rem}.empty{color:var(--muted);padding:2.5rem 0}
+.foot{margin-top:3rem;color:var(--muted);font-size:.9375rem}
+
+/* What people said is the only text set in serif */
+blockquote{margin:0 0 .625rem;font-family:ui-serif,"New York","Iowan Old Style",Georgia,serif;font-size:1.375rem;line-height:1.45;letter-spacing:-.005em}
+
+/* Rows */
+.rows{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:1rem;border-bottom:1px solid var(--line)}
+.rowmain{all:unset;box-sizing:border-box;flex:1;min-width:0;padding:.875rem 0;cursor:pointer}
+.rowmain:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:.25rem}.rowmain:hover .title{color:var(--accent)}
+.title{display:block;font-weight:600}.rowmain .meta{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowlink{all:unset;cursor:pointer;color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:.2em}
+.rowlink:hover{color:var(--accent)}.rowlink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.single{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer}.single:hover .title{color:var(--accent)}
+.state{white-space:nowrap;font-size:.9375rem;color:var(--muted)}.state::before{content:"";display:inline-block;width:.4375rem;height:.4375rem;border-radius:50%;background:currentColor;margin-right:.4375rem;vertical-align:.09em}
+.state.hot{color:var(--hot)}.state.warm{color:var(--warm)}.state.callback_requested{color:var(--callback)}.state.cold{color:var(--cold)}
+.overdue{font-weight:600;color:var(--ink)}
+
+/* Controls */
+button{cursor:pointer;border:0;background:none}button:disabled{opacity:.5;cursor:not-allowed}
+.primary{background:var(--accent);color:var(--on-accent);font-weight:600;padding:.5625rem 1.125rem;border-radius:.625rem}.primary:hover{background:var(--accent-hover)}
+.quiet{color:var(--accent);padding:.375rem .25rem;border-radius:.375rem}.quiet:hover{color:var(--accent-hover);text-decoration:underline;text-underline-offset:.2em}
+.dull{color:var(--muted)}
+input,select,textarea{width:100%;padding:.625rem .75rem;border:1px solid var(--field);border-radius:.625rem;background:var(--raise)}input[type=checkbox]{width:auto;accent-color:var(--accent)}
+label{display:block;font-size:.9375rem;color:var(--muted);margin-bottom:.875rem}label input,label select,label textarea{margin-top:.25rem;color:var(--ink);font-size:1rem}
+label.check{display:flex;gap:.625rem;align-items:center;color:var(--ink);font-size:1rem}label.check input{margin:0}
+.filters{display:flex;gap:.625rem;margin-bottom:1.25rem}.filters input{flex:1}.filters select{width:auto;flex:0 0 auto}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0 .875rem}.picks{max-height:14rem;overflow:auto;margin-bottom:.875rem}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.375rem}
+
+/* Disclosure */
+details{margin-top:2.5rem}summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:.9375rem}summary:hover{color:var(--ink)}details[open] summary{margin-bottom:1rem}
+.bars{display:grid;gap:.5rem}.barrow{display:grid;grid-template-columns:7rem 1fr 2rem;gap:.75rem;align-items:center;font-size:.9375rem}
+.barrow b{font-weight:600;text-align:right}.bar{background:var(--line);border-radius:99px;height:.5rem;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;min-width:2px}
+
+/* Status lines */
+.live{display:block;color:var(--ink);text-decoration:none;margin-bottom:2rem;font-size:.9375rem}.live:hover{color:var(--accent)}
+.live i{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:var(--live);margin-right:.5rem;animation:pulse 1.4s infinite}@keyframes pulse{50%{opacity:.35}}
+.problem{display:flex;gap:.75rem;align-items:center;justify-content:space-between;background:var(--accent-soft);padding:.625rem .875rem;border-radius:.625rem;margin-bottom:1.5rem}.sheet .problem{margin:1rem 0 0}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.625rem 1.125rem;border-radius:.75rem;z-index:50;max-width:calc(100vw - 2rem);font-size:.9375rem}
+
+/* Sheets and confirmations */
+dialog{border:0;padding:0;color:var(--ink);background:var(--bg)}dialog::backdrop{background:var(--backdrop)}
+#dlg{margin:0 0 0 auto;width:min(33rem,100vw);height:100dvh;max-height:100dvh;max-width:100vw}#dlg[open]{animation:slide .2s ease-out}@keyframes slide{from{opacity:0;transform:translateX(1.5rem)}}
+.sheet{padding:2rem 2rem 3rem}.sheet header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}.sheet h2.title{font-size:1.5rem;line-height:1.3;color:var(--ink);font-weight:650;margin:0}
+.facts{display:grid;grid-template-columns:7.5rem 1fr;gap:.25rem 1rem;margin:1.5rem 0}.facts dt{color:var(--muted)}.facts dd{margin:0}
+.correct{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin:1.5rem 0 0}.correct label{margin:0;flex:1 1 11rem}
+audio{width:100%;margin:.5rem 0}.transcript{font-size:1rem;margin-top:.75rem}.transcript p{margin-bottom:.625rem}.transcript .who{display:block;font-size:.875rem;color:var(--muted)}
+.transcript .u .said{font-family:ui-serif,"New York","Iowan Old Style",Georgia,serif;font-size:1.125rem}.call{margin-top:1.25rem}
+#ask{margin:auto;width:min(26rem,calc(100vw - 2rem));border-radius:1rem}#ask h2{outline:0;font-size:1.25rem;color:var(--ink);margin:0 0 .5rem}#ask p{color:var(--muted);margin-bottom:1.5rem}#ask .sheet{padding:1.75rem}
+.actions{display:flex;justify-content:flex-end;gap:.75rem}.actions button:first-child{padding:.5625rem .875rem;color:var(--muted)}
+
+@media (prefers-reduced-motion:reduce){.enter,#dlg[open]{animation:none}.live i{animation:none}}
+
 /* In em, so a larger browser font also moves to this layout. */
 @media (max-width:47.5em){
-  html{font-size:106.25%}body{font-size:1rem}
-  .app{display:block}main{padding:1.125rem 1rem calc(5.5rem + env(safe-area-inset-bottom))}
-  nav{position:static;height:auto;padding:.75rem 1rem;flex-direction:row;align-items:center;gap:.75rem;border-right:0;border-bottom:1px solid var(--line)}
-  .logo{padding:0;white-space:nowrap}.status{margin:0 0 0 auto;padding:0;display:flex;align-items:center;gap:.75rem}.status>#status{display:none}
-  .phone-only{display:inline-flex}.status a,#signout{display:inline-flex;align-items:center;min-height:2.75rem;margin:0;padding:0 .625rem;font-size:.875rem}.status a{text-decoration:none}
-  #links{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border-top:1px solid var(--line);padding:.25rem .25rem calc(.25rem + env(safe-area-inset-bottom))}
-  #links a{display:flex;align-items:center;justify-content:center;min-height:2.75rem;margin:0;padding:0 .125rem;font-size:.75rem;text-align:center}
-  #links a[href="#projects"],#links .full{display:none}#links .short{display:inline}
-  button,input,select{min-height:2.75rem}input,select,textarea{font-size:1rem}.grid2{grid-template-columns:1fr}
-  .toolbar input,.toolbar select{flex:1 1 100%}.toolbar .spacer{display:none}.toolbar button{flex:1}
-  .rowlink{display:inline-flex;align-items:center;min-height:2.75rem}label.check{min-height:2.75rem;font-size:1rem}input[type=checkbox]{width:1.25rem;height:1.25rem;min-height:0}
-  .home{flex-direction:column;flex-wrap:nowrap;align-items:stretch}.feed,.side{flex:none}.side{display:contents}.upnext{order:-1}.feed{margin-bottom:1.125rem}.funnel .row{grid-template-columns:5.5rem 1fr 1.5rem 2.375rem}
-  .toast{bottom:calc(4.5rem + env(safe-area-inset-bottom))}
-  .tablewrap{overflow:visible}table.cards,table.cards tbody{display:block;min-width:0}table.cards thead{display:none}
-  table.cards tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.125rem .75rem;padding:.625rem 1.125rem;border-bottom:1px solid var(--line)}
-  table.cards tr:last-child{border-bottom:0}table.cards td{display:block;padding:0;border:0;grid-column:1/-1;max-width:none}
-  table.cards td.lead{grid-column:1;grid-row:1}table.cards td.tag{grid-column:2;grid-row:1;text-align:right;align-self:center}table.cards td.blank{display:none}
-  table.cards td[data-label]::before{content:attr(data-label) ": ";color:var(--muted)}table.cards td.action{margin-top:.5rem;display:flex;gap:.625rem;flex-wrap:wrap}table.cards td.action button{flex:1}
-  .story .spread{display:block}
+  .top{padding:1rem 1.25rem 0;gap:1rem}.mark{display:inline-flex;align-items:center;min-height:2.75rem}.phone-only{display:inline-flex;align-items:center;min-height:2.75rem;text-decoration:none}
+  #view a{display:inline-flex;align-items:center;min-height:2.75rem}
+  #links{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;background:var(--bg);border-top:1px solid var(--line);padding:.25rem .25rem calc(.25rem + env(safe-area-inset-bottom))}
+  #links a{display:flex;align-items:center;justify-content:center;min-height:2.875rem;font-size:.875rem}#links a[href="#projects"]{display:none}
+  main{padding:2rem 1.25rem calc(6rem + env(safe-area-inset-bottom))}h1{font-size:1.625rem}blockquote{font-size:1.25rem}.block{margin-top:2.25rem}
+  .primary,.quiet,.dull,input,select,summary,#signout{min-height:2.75rem}summary{display:list-item;line-height:2.75rem}.quiet{padding:0 .375rem}
+  label.check{min-height:2.75rem}input[type=checkbox]{width:1.25rem;height:1.25rem}.rowmain{min-height:3.25rem}.rowlink{padding:.75rem 0}
+  .filters{flex-wrap:wrap}.filters select{flex:1 1 100%}.split{grid-template-columns:1fr}.row{flex-wrap:wrap;gap:0 .75rem}.sheet{padding:1.5rem 1.25rem 3rem}
+  .toast{bottom:calc(4.5rem + env(safe-area-inset-bottom))}.right{gap:.5rem}
 }
 </style>
 </head>
 <body>
-<div class="app">
-  <nav aria-label="Main">
-    <div class="logo">PropReach <span>AI</span></div>
-    <div id="links"></div>
-    <div class="status"><div id="status"></div><a class="phone-only" href="#projects">Projects</a><button id="signout" data-logout hidden>Sign out</button></div>
-  </nav>
-  <main>
-    <a class="live" id="live" href="#calls" hidden></a>
-    <div class="problem" id="problem" role="alert" hidden><span></span><button data-dismiss>Dismiss</button></div>
-    <div id="view"></div>
-  </main>
-</div>
+<header class="top">
+  <a class="mark" href="#overview">PropReach</a>
+  <nav id="links" aria-label="Main"></nav>
+  <div class="right"><span id="status"></span><a class="phone-only" href="#projects">Projects</a><button id="signout" class="quiet dull" data-logout hidden>Sign out</button></div>
+</header>
+<main>
+  <a class="live" id="live" href="#calls" hidden></a>
+  <div class="problem" id="problem" role="alert" hidden><span></span><button class="quiet" data-dismiss>Dismiss</button></div>
+  <div id="view"></div>
+</main>
 <div id="toasts" role="status"></div>
 <dialog id="dlg" aria-labelledby="dlgTitle">
-  <div class="dlg"><div id="dlgBody"></div><div class="problem" id="dlgProblem" role="alert" hidden><span></span><button data-dismiss>Dismiss</button></div></div>
+  <div class="sheet"><div id="dlgBody"></div><div class="problem" id="dlgProblem" role="alert" hidden><span></span><button class="quiet" data-dismiss>Dismiss</button></div></div>
   <div id="dlgToasts" role="status"></div>
 </dialog>
 <dialog id="ask" aria-labelledby="askTitle" aria-describedby="askBody">
-  <div class="dlg">
+  <div class="sheet">
     <h2 id="askTitle" tabindex="-1" autofocus></h2>
     <p id="askBody"></p>
     <div class="actions"><button data-ask="no">Cancel</button><button class="primary" id="askYes" data-ask="yes"></button></div>
@@ -130,8 +131,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const noop = () => {};
 
-const TABS = { overview: 'Overview', leads: 'Leads', campaigns: 'Campaigns', calls: 'Call history', appointments: 'Appointments', projects: 'Projects' };
-const SHORT_TABS = { calls: 'Calls', appointments: 'Visits' };
+const TABS = { overview: 'Home', leads: 'Leads', campaigns: 'Campaigns', calls: 'Calls', appointments: 'Visits', projects: 'Projects' };
 const LABEL = {
   new: 'New', hot: 'Hot', warm: 'Warm', cold: 'Cold', not_interested: 'Not interested',
   callback_requested: 'Callback', unreachable: 'Unreachable', unclassified: 'Needs review',
@@ -151,8 +151,8 @@ const ACTIVE_WINDOW_MS = 10 * 60 * 1000;
 const tabFromHash = () => { const h = location.hash.slice(1); return Object.hasOwn(TABS, h) ? h : 'overview'; };
 let tab = tabFromHash();
 const state = {
-  search: '', filter: '', selected: new Set(), cName: '', cProject: '', calls: [], names: new Map(),
-  activeLeads: new Set(), seenAppts: null, freshAppts: new Set(),
+  search: '', filter: '', selected: new Set(), cName: '', cProject: '', calls: [], names: new Map(), projects: [],
+  activeLeads: new Set(), seenAppts: null, open: new Set(),
 };
 let meta = {};
 
@@ -202,40 +202,30 @@ function ask({ title, body, confirm }) {
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-const badge = (s) => `<span class="badge ${esc(s)}">${esc(LABEL[s] ?? s)}</span>`;
-const price = (l) => (l == null ? '–' : l >= 100 ? `₹${+(l / 100).toFixed(2)} Cr` : `₹${+l.toFixed(1)} L`);
+const stateWord = (s, text) => `<span class="state ${esc(s)}">${esc(text ?? LABEL[s] ?? s)}</span>`;
+const price = (l) => (l == null ? '' : l >= 100 ? `₹${+(l / 100).toFixed(2)} Cr` : `₹${+l.toFixed(1)} L`);
 const hhmm = (t) => {
   const [h, m] = t.split(':').map(Number);
   return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
 };
 const day = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-const dur = (s) => (s ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : '–');
+const dur = (s) => (s ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : '');
 const utc = (s) => new Date(`${s.replace(' ', 'T')}Z`);
-const when = (s) => (s ? utc(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '–');
+const when = (s) => (s ? utc(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '');
 const nowIST = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 16);
-const need = (l) => [l.pref_bhk && `${l.pref_bhk} BHK`, l.pref_location, l.budget_lakh && price(l.budget_lakh)].filter(Boolean).join(' · ') || '–';
+const need = (l) => [l.pref_bhk && `${l.pref_bhk} BHK`, l.pref_location, l.budget_lakh && price(l.budget_lakh)].filter(Boolean).join(' · ');
 const isActive = (c) => !c.ended_at && Date.now() - utc(c.created_at) < ACTIVE_WINDOW_MS;
 const resultOf = (c) => (c.connected ? 'Connected' : isActive(c) ? RESULT[c.status] ?? 'On call' : RESULT[c.status] ?? c.status);
-/** A table cell that carries its own label, for the card layout on phones. */
-const cell = (label, html, cls = '') => `<td data-label="${label}" class="${cls}${html === '–' || html === '' ? ' blank' : ''}">${html}</td>`;
+const list = (rows) => `<ul class="rows">${rows.join('')}</ul>`;
+const openAttr = (key) => (state.open.has(key) ? 'open' : '');
 
-function transcriptHtml(text) {
-  if (!text) return '<p class="small">No transcript for this call.</p>';
-  return `<div class="transcript">${text.split('\n').filter(Boolean).map((line) => {
-    const m = line.match(/^(assistant|user):\s*(.*)$/i);
-    if (!m) return `<p class="small">${esc(line)}</p>`;
-    const user = m[1].toLowerCase() === 'user';
-    return `<p class="${user ? 'u' : ''}"><b>${user ? 'Customer' : 'Asha (AI)'}:</b> ${esc(m[2])}</p>`;
-  }).join('')}</div>`;
-}
-
-function recordingHtml(call) {
-  if (!call.has_recording) return '';
-  return `<audio controls preload="none" src="/api/calls/${Number(call.id)}/recording"></audio>`;
+function greeting() {
+  const hour = Number(nowIST().slice(11, 13));
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 }
 
 function headline(o) {
-  if (!o.leads) return 'Add leads so Asha can start calling.';
+  if (!o.leads) return 'Add your leads and Asha will start calling.';
   if (!o.attemptedLeads) return 'Asha is ready to start calling.';
   const reached = `Asha reached ${o.connectedLeads} of ${plural(o.leads, 'lead')}`;
   return o.visitLeads ? `${reached} and booked ${plural(o.visitLeads, 'site visit')}.` : `${reached}. No visits booked yet.`;
@@ -247,47 +237,52 @@ function storyLine(s) {
   if (s.kind === 'visit') return `Asha booked ${who} for ${at}.`;
   if (s.kind === 'callback') return `Asha set up a consultant call with ${who} for ${at}.`;
   if (s.kind === 'optout') return `${who} asked not to be called again.`;
+  if (s.kind === 'abusive') return `Asha ended the call with ${who} after abuse. Worth a look.`;
   return `Asha spoke with ${who}. ${OUTCOME[s.status] ?? 'Needs a review.'}`;
 }
 
-const storyHtml = (s) => `<article class="story">
-    <div class="spread"><h3>${storyLine(s)}</h3><time class="small">${when(s.when)}</time></div>
-    ${s.quote ? `<blockquote>“${esc(s.quote)}”</blockquote>` : ''}
-    ${s.note ? `<p class="note"><span class="small">AI summary:</span> ${esc(s.note)}</p>` : ''}
-    ${s.details.length ? `<p class="facts">${s.details.map(esc).join(' · ')}</p>` : ''}
-  </article>`;
+function numbers(o) {
+  const steps = [
+    ['Leads', o.leads], ['Called', o.attemptedLeads], ['Reached', o.connectedLeads], ['Interested', o.interested],
+    ['Qualified', o.qualified], ['Hot', o.hot], ['Booked a visit', o.visitLeads],
+  ];
+  const totals = [plural(o.attempted, 'call') + ' attempted', `${o.connected} connected`, plural(o.visits, 'site visit'), plural(o.callbacks, 'human callback')];
+  return `<details data-key="numbers" ${openAttr('numbers')}><summary>Numbers</summary>
+    <div class="bars">${steps.map(([k, v]) => `<div class="barrow"><span>${k}</span>
+      <div class="bar"><i style="width:${o.leads ? (v / o.leads) * 100 : 0}%"></i></div><b>${v}</b></div>`).join('')}</div>
+    <p class="meta" style="margin-top:1rem">${totals.join(' · ')}${o.hotBudgetLakh ? `<br>Stated budget of hot leads: ${price(o.hotBudgetLakh)}` : ''}</p>
+  </details>`;
+}
 
 const views = {
   async overview() {
     const o = meta;
     const [appts, stories] = await Promise.all([get('/api/appointments'), get('/api/activity')]);
-    const steps = [
-      ['Leads', o.leads], ['Called', o.attemptedLeads], ['Reached', o.connectedLeads],
-      ['Interested', o.interested], ['Qualified', o.qualified], ['Hot', o.hot], ['Booked a visit', o.visitLeads],
-    ];
-    const totals = [plural(o.attempted, 'call') + ' attempted', `${o.connected} connected`, plural(o.visits, 'site visit'), plural(o.callbacks, 'human callback')];
     const now = nowIST();
-    const next = appts.filter((a) => a.status === 'scheduled' && `${a.date} ${a.time}` >= now).slice(0, 4);
-    return `<p class="eyebrow">${esc(o.company.name)}</p><h1>${esc(headline(o))}</h1>
-      <div class="home">
-        <section class="feed" aria-labelledby="feedTitle"><h2 id="feedTitle">What Asha did</h2>
-          ${stories.length ? stories.map(storyHtml).join('') : `<div class="story"><p class="small" style="margin:0">Conversations appear here after Asha's first call.
-            <a href="#leads">Add leads</a> or <a href="#campaigns">start a campaign</a>.</p></div>`}
-        </section>
-        <div class="side">
-          <section class="card upnext" aria-labelledby="nextTitle"><h2 id="nextTitle">Coming up</h2>
-            ${next.length ? next.map((a) => `<div class="next"><span><b>${esc(a.lead)}</b><span class="small">${esc(a.project ?? 'Human callback')}</span></span>
-              <span class="small when">${day(a.date)}<br>${hhmm(a.time)}</span></div>`).join('') : '<p class="small" style="margin:0">Nothing scheduled.</p>'}
-          </section>
-          <section class="card funnel" aria-labelledby="funnelTitle"><h2 id="funnelTitle">Lead funnel</h2>
-            ${steps.map(([k, v]) => `<div class="row"><span>${k}</span>
-              <div class="bar"><i style="width:${o.leads ? (v / o.leads) * 100 : 0}%"></i></div><b>${v}</b>
-              <span class="pct">${o.leads ? Math.round((v / o.leads) * 100) : 0}%</span></div>`).join('')}
-            <p class="small">${totals.join(' · ')}${o.hotBudgetLakh ? `<br>Stated budget of hot leads: ${price(o.hotBudgetLakh)}` : ''}</p>
-          </section>
-          ${o.hasSamples ? '<div class="notice"><span>Includes fictional sample data.</span><button data-clear>Clear sample data</button></div>' : ''}
-        </div>
-      </div>`;
+    const scheduled = appts.filter((a) => a.status === 'scheduled');
+    const upcoming = scheduled.filter((a) => `${a.date} ${a.time}` >= now);
+    const overdue = scheduled.length - upcoming.length;
+    const next = upcoming[0];
+    const latest = stories[0];
+    const alerts = [
+      !o.calling && 'Calling is off.',
+      overdue && `<a href="#appointments">${plural(overdue, 'appointment')} overdue</a>.`,
+    ].filter(Boolean);
+    return `<p class="eyebrow">${greeting()}, ${esc(o.company.name)}</p>
+      <h1>${esc(headline(o))}</h1>
+      ${alerts.length ? `<p class="alert">${alerts.join(' ')}</p>` : ''}
+      ${next ? `<section class="block"><h2>Next</h2>
+        <button class="single" data-lead="${next.lead_id}"><span class="title">${esc(next.lead)}</span>
+          <span class="meta">${esc(next.project ?? 'Human callback')} · ${day(next.date)}, ${hhmm(next.time)}</span></button>
+        ${upcoming.length > 1 ? `<p class="meta" style="margin-top:.375rem"><a href="#appointments">${upcoming.length - 1} more</a></p>` : ''}
+      </section>` : ''}
+      ${latest ? `<section class="block"><h2>Latest conversation</h2>
+        ${latest.quote ? `<blockquote>“${esc(latest.quote)}”</blockquote>` : latest.note ? `<blockquote>${esc(latest.note)}</blockquote>` : ''}
+        <p class="meta">${storyLine(latest)}</p>
+        ${stories.length > 1 ? `<p class="meta" style="margin-top:.375rem"><a href="#calls">All calls</a></p>` : ''}
+      </section>` : `<section class="block"><p class="meta">Conversations appear here after Asha's first call. <a href="#leads">Add leads</a> to begin.</p></section>`}
+      ${o.leads ? numbers(o) : ''}
+      ${o.hasSamples ? '<p class="foot">Includes sample data. <button class="quiet" data-clear>Clear it</button></p>' : ''}`;
   },
 
   async leads() {
@@ -295,124 +290,84 @@ const views = {
     const q = state.search.toLowerCase();
     const haystack = (l) => `${l.name} ${l.phone} ${l.enquiry} ${l.pref_location ?? ''} ${l.interested_project ?? ''}`.toLowerCase();
     const rows = all.filter((l) => (!state.filter || l.status === state.filter) && (!q || haystack(l).includes(q)));
-    const hasSamples = all.some((l) => l.is_sample);
-    const callCell = (l) => {
-      if (l.is_sample) return '<td class="action blank"></td>';
-      const onCall = state.activeLeads.has(l.id);
-      const blocked = l.dial_blocker ?? (meta.calling ? null : 'Calling is off');
-      return `<td class="action"><button data-call="${l.id}" ${blocked || onCall ? 'disabled' : ''}>${onCall ? 'On call' : 'Call'}</button>
-        ${blocked ? `<div class="small reason">${esc(blocked)}</div>` : ''}</td>`;
-    };
-    return `<h1>Leads</h1><p class="sub">${plural(all.length, 'prospect')}. Only leads with recorded consent can be called.${hasSamples ? ' Sample leads can never be called.' : ''}</p>
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="Search name, phone, area" aria-label="Search leads" value="${esc(state.search)}">
-        <select id="filter" aria-label="Filter by status"><option value="">All statuses</option>
+    const canCall = (l) => meta.calling && !l.dial_blocker && !state.activeLeads.has(l.id);
+    const row = (l) => `<li class="row">
+      <button class="rowmain" data-lead="${l.id}"><span class="title">${esc(l.name)}</span><span class="meta">${esc(need(l) || l.enquiry || l.phone)}</span></button>
+      ${stateWord(l.status)}${canCall(l) ? `<button class="quiet" data-call="${l.id}">Call</button>` : ''}</li>`;
+    return `<div class="head"><h1>Leads</h1><button class="primary" data-addlead>Add lead</button></div>
+      <div class="filters">
+        <input id="search" type="search" placeholder="Search" aria-label="Search leads" value="${esc(state.search)}">
+        <select id="filter" aria-label="Filter by status"><option value="">Everyone</option>
           ${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${state.filter === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-        <span class="spacer"></span><button data-addlead>Add lead</button><button data-upload>Upload CSV</button>
       </div>
-      <div class="card"><div class="tablewrap">${rows.length ? `<table class="cards">
-        <thead><tr><th>Name</th><th>Status</th><th>Requirement</th><th>Project</th><th>Next action</th><th>Call</th></tr></thead>
-        <tbody>${rows.map((l) => `<tr class="click" data-lead="${l.id}">
-          <td class="lead"><button class="rowlink" data-lead="${l.id}">${esc(l.name)}</button><div class="small">${esc(l.phone)}</div></td>
-          <td class="tag">${badge(l.status)}</td>${cell('Looking for', esc(need(l)))}${cell('Project', esc(l.interested_project ?? '–'))}
-          ${cell('Next', esc(l.next_action ?? '–'), 'small')}${callCell(l)}</tr>`).join('')}</tbody></table>`
-        : `<div class="empty">${all.length ? 'No leads match this search.' : 'No leads yet. Add one or upload a CSV.'}</div>`}</div></div>`;
+      ${rows.length ? list(rows.map(row)) : `<p class="empty">${all.length ? 'No leads match.' : 'No leads yet.'}</p>`}`;
   },
 
   async campaigns() {
-    const [list, leads, projects] = await Promise.all([get('/api/campaigns'), get('/api/leads'), get('/api/projects')]);
-    const ready = leads.filter((l) => !l.dial_blocker);
-    state.names = new Map(ready.map((l) => [l.id, l.name]));
-    const picked = ready.filter((l) => state.selected.has(l.id)).length;
-    const rate = (n, d) => (d ? ` <span class="small">${Math.round((n / d) * 100)}%</span>` : '');
-    const row = (c) => `<tr><td class="lead"><b>${esc(c.name)}</b><div class="small">${esc(c.project ?? 'Whole portfolio')}</div></td>
-      <td class="tag">${esc(CAMPAIGN_STATUS[c.status] ?? c.status)}</td>${cell('Called', `${c.dialled ?? 0} of ${c.total}`)}
-      ${cell('Reached', `${c.reached ?? 0}${rate(c.reached ?? 0, c.dialled)}`)}${cell('Interested', `${c.interested ?? 0}${rate(c.interested ?? 0, c.reached)}`)}
-      ${cell('Visits', `${c.visits ?? 0}${rate(c.visits ?? 0, c.reached)}`)}
-      ${cell('Skipped', `${c.skipped ?? 0}${c.skip_reasons ? `<div class="small">${esc(c.skip_reasons.split(',').join(', '))}</div>` : ''}`)}
-      ${cell('Started', when(c.created_at), 'small nowrap')}
-      <td class="action${c.status === 'running' ? '' : ' blank'}">${c.status === 'running' ? `<button data-stop="${c.id}">Stop</button>` : ''}</td></tr>`;
-    return `<h1>Campaigns</h1><p class="sub">Choose a focus project. Asha still knows the whole portfolio on every call.</p>
-      <div class="card"><h2>New campaign</h2>
-        <div class="grid2">
-          <label>Name<input id="cName" placeholder="Whitefield Heights launch" value="${esc(state.cName)}"></label>
-          <label>Focus project<select id="cProject"><option value="">Whole portfolio</option>
-            ${projects.map((p) => `<option value="${p.id}" ${String(p.id) === state.cProject ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-        </div>
-        <div class="spread"><span class="small">Callable leads (${ready.length}), ${picked} selected</span>
-          ${ready.length ? `<button data-pickall="${picked === ready.length ? 'none' : 'all'}">${picked === ready.length ? 'Clear all' : 'Select all'}</button>` : ''}</div>
-        ${ready.length ? `<div class="picks">${ready.map((l) => `<label class="check"><input type="checkbox" data-pick="${l.id}" ${state.selected.has(l.id) ? 'checked' : ''}>
-          ${esc(l.name)} <span class="small">${esc(l.phone)}</span></label>`).join('')}</div>`
-          : '<p class="small">Add a real lead with consent first. Sample leads can never be called.</p>'}
-        <button class="primary" data-launch ${meta.calling && picked ? '' : 'disabled'}>Launch campaign</button>
-        ${meta.calling ? '' : '<span class="small">Calling is off.</span>'}
-      </div>
-      <div class="card"><h2>Campaign performance</h2><div class="tablewrap">${list.length ? `<table class="cards">
-        <thead><tr><th>Campaign</th><th>Status</th><th>Called</th><th>Reached</th><th>Interested</th><th>Visits</th><th>Skipped</th><th>Started</th><th></th></tr></thead>
-        <tbody>${list.map(row).join('')}</tbody></table>` : '<div class="empty">No campaigns yet.</div>'}</div></div>`;
+    const rows = await get('/api/campaigns');
+    const row = (c) => {
+      const figures = [`${c.dialled ?? 0} of ${c.total} called`, `${c.reached ?? 0} reached`, `${c.interested ?? 0} interested`, plural(c.visits ?? 0, 'visit')];
+      if (c.skipped) figures.push(`${c.skipped} skipped`);
+      return `<li class="row"><div class="rowmain" style="cursor:default"><span class="title">${esc(c.name)}</span>
+        <span class="meta" style="white-space:normal">${esc(c.project ?? 'Whole portfolio')}<br>${figures.join(' · ')}</span></div>
+        <span class="state">${esc(CAMPAIGN_STATUS[c.status] ?? c.status)}</span>
+        ${c.status === 'running' ? `<button class="quiet" data-stop="${c.id}">Stop</button>` : ''}</li>`;
+    };
+    return `<div class="head"><h1>Campaigns</h1><button class="primary" data-newcampaign>New campaign</button></div>
+      ${rows.length ? list(rows.map(row)) : '<p class="empty">No campaigns yet.</p>'}`;
   },
 
   async calls() {
     const rows = state.calls;
-    return `<h1>Call history</h1><p class="sub">Every attempt, with transcript and outcome. Summaries are written by AI.</p>
-      <div class="card"><div class="tablewrap">${rows.length ? `<table class="cards">
-        <thead><tr><th>Lead</th><th>Result</th><th>Lead status</th><th>Duration</th><th>Campaign</th><th>AI summary</th><th>Time</th></tr></thead>
-        <tbody>${rows.map((c) => `<tr class="click" data-callrow="${c.id}">
-          <td class="lead"><button class="rowlink" data-callrow="${c.id}">${esc(c.lead ?? 'Unknown')}</button><div class="small">${esc(c.phone ?? '')}</div></td>
-          <td class="tag"><span class="badge ${c.connected ? 'good' : ''}">${esc(resultOf(c))}</span></td>
-          ${cell('Lead status', c.lead_status ? badge(c.lead_status) : '–')}${cell('Duration', dur(c.duration), 'nowrap')}
-          ${cell('Campaign', `${esc(c.campaign ?? 'Direct')}${c.project ? `<div>${esc(c.project)}</div>` : ''}`, 'small')}
-          ${cell('AI summary', esc(c.summary ?? '–'), 'small clip')}${cell('Time', when(c.created_at), 'small nowrap')}</tr>`).join('')}</tbody></table>`
-        : '<div class="empty">No calls yet.</div>'}</div></div>`;
+    const row = (c) => `<li class="row"><button class="rowmain" data-callrow="${c.id}"><span class="title">${esc(c.lead ?? 'Unknown')}</span>
+      <span class="meta">${esc(c.summary ?? when(c.created_at))}</span></button>${stateWord(c.lead_status && c.connected ? c.lead_status : '', resultOf(c))}</li>`;
+    return `<div class="head"><h1>Calls</h1></div>
+      ${rows.length ? list(rows.map(row)) : `<p class="empty">Asha hasn't made any calls yet.</p>`}`;
   },
 
   async appointments() {
     const rows = await get('/api/appointments');
     const now = nowIST();
-    const row = (a) => `<tr class="${state.freshAppts.has(a.id) ? 'fresh' : ''}">
-      <td class="tag nowrap"><b>${day(a.date)}</b><div class="small">${hhmm(a.time)}</div>
-        ${a.status === 'scheduled' && `${a.date} ${a.time}` < now ? '<span class="badge overdue">Overdue</span>' : ''}</td>
-      <td class="lead"><button class="rowlink" data-lead="${a.lead_id}">${esc(a.lead)}</button><div class="small">${esc(a.phone)}</div></td>
-      ${cell('For', esc(a.project ?? 'Phone callback'))}${cell('Consultant', esc(a.rep ?? 'Unassigned'))}
-      ${cell('Briefing', esc(a.notes ?? a.summary ?? '–'), 'small clip')}
-      <td class="action nowrap">${a.status === 'scheduled'
-        ? `<button data-appt="${a.id}" data-to="completed" data-kind="${a.type}">Done</button> <button data-appt="${a.id}" data-to="cancelled" data-kind="${a.type}">Call off</button>`
-        : esc(a.status)}</td></tr>`;
-    const table = (title, list, always) => (!list.length && !always ? '' : `<div class="card"><h2>${title} (${list.length})</h2><div class="tablewrap">${list.length ? `<table class="cards">
-      <thead><tr><th>When</th><th>Customer</th><th>For</th><th>Consultant</th><th>Briefing</th><th>Status</th></tr></thead>
-      <tbody>${list.map(row).join('')}</tbody></table>` : '<div class="empty">Nothing here yet.</div>'}</div></div>`);
+    const row = (a) => {
+      const late = a.status === 'scheduled' && `${a.date} ${a.time}` < now;
+      const what = [a.project ?? 'Human callback', `${day(a.date)}, ${hhmm(a.time)}`, a.rep].filter(Boolean).join(' · ');
+      return `<li class="row"><button class="rowmain" data-lead="${a.lead_id}"><span class="title">${esc(a.lead)}${late ? ' <span class="overdue">· Overdue</span>' : ''}</span>
+        <span class="meta">${esc(what)}</span></button>
+        ${a.status === 'scheduled'
+          ? `<button class="quiet" data-appt="${a.id}" data-to="completed" data-kind="${a.type}">Done</button><button class="quiet dull" data-appt="${a.id}" data-to="cancelled" data-kind="${a.type}">Call off</button>`
+          : `<span class="state">${a.status === 'cancelled' ? 'Called off' : 'Completed'}</span>`}</li>`;
+    };
     const open = rows.filter((a) => a.status === 'scheduled');
-    return `<h1>Appointments</h1><p class="sub">Consultants see the buyer's needs before they meet or call. Briefings from calls are written by AI, so check anything important.</p>
-      ${table('Site visits', open.filter((a) => a.type === 'visit'), true)}
-      ${table('Human callbacks', open.filter((a) => a.type === 'callback'), true)}
-      ${table('Completed', rows.filter((a) => a.status === 'completed'))}
-      ${table('Called off', rows.filter((a) => a.status === 'cancelled'))}`;
+    const past = rows.filter((a) => a.status !== 'scheduled');
+    return `<div class="head"><h1>Visits</h1></div>
+      ${open.length ? list(open.map(row)) : '<p class="empty">Nothing booked yet.</p>'}
+      ${past.length ? `<details data-key="past" ${openAttr('past')}><summary>Past</summary>${list(past.map(row))}</details>` : ''}`;
   },
 
   async projects() {
-    const list = await get('/api/projects');
-    return `<div class="toolbar" style="margin-bottom:.25rem"><div><h1>Projects</h1></div><span class="spacer"></span>
-        <button class="primary" data-addproject>Add project</button></div>
-      <p class="sub">Asha reads this live, so a new project is available on the next call.</p>
-      <div class="projects">${list.map((p) => `<div class="card"><h2 style="margin-bottom:2px">${esc(p.name)}</h2><div class="small">${esc(p.location)}</div>
-        <table class="units"><thead><tr><th>Type</th><th>Size</th><th>From</th><th>Left</th></tr></thead>
-        <tbody>${p.configs.map((c) => `<tr><td>${c.bhk} BHK</td><td>${c.size_sqft} sq ft</td><td>${price(c.price_lakh)}</td><td>${c.units_left}</td></tr>`).join('')}</tbody></table>
-        <div class="small" style="margin-bottom:.5rem">Possession: ${esc(p.possession || '–')}</div>
-        <div class="chips">${p.amenities.map((a) => `<span>${esc(a)}</span>`).join('')}</div></div>`).join('')}</div>`;
+    state.projects = await get('/api/projects');
+    const row = (p) => {
+      const from = Math.min(...p.configs.map((c) => c.price_lakh));
+      const types = [...new Set(p.configs.map((c) => c.bhk))].join(' and ');
+      return `<li class="row"><button class="rowmain" data-project="${p.id}"><span class="title">${esc(p.name)}</span>
+        <span class="meta">${esc(p.location.split(',')[0])} · ${esc(types)} BHK · from ${price(from)}</span></button></li>`;
+    };
+    return `<div class="head"><h1>Projects</h1><button class="primary" data-addproject>Add project</button></div>
+      ${list(state.projects.map(row))}`;
   },
 };
 
 function links() {
   const box = $('#links');
   if (!box.children.length) {
-    box.innerHTML = Object.entries(TABS).map(([k, v]) => `<a href="#${k}"><span class="full">${v}</span><span class="short">${SHORT_TABS[k] ?? v}</span></a>`).join('');
+    box.innerHTML = Object.entries(TABS).map(([k, v]) => `<a href="#${k}">${v}</a>`).join('');
   }
   for (const a of box.children) {
     const on = a.hash === `#${tab}`;
     a.classList.toggle('on', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
-  document.title = `${TABS[tab]} · PropReach AI`;
+  document.title = `${TABS[tab]} · PropReach`;
 }
 
 /** Builds a selector that finds the same control again after the page is rebuilt. */
@@ -429,17 +384,15 @@ async function render() {
   const id = ++renderId;
   const fetched = await get('/api/overview');
   meta = fetched;
-  $('#status').innerHTML = `<span class="dot ${meta.calling ? 'on' : ''}"></span>${meta.calling ? 'Calling is on' : 'Calling is off'}`;
+  $('#status').textContent = '';
   $('#signout').hidden = !meta.signInRequired;
   const html = await views[tab]();
   if (id !== renderId || html === lastHtml) return;
   const active = document.activeElement;
   const selector = focusSelector(active);
   const caret = active?.selectionStart;
-  const scroll = [...document.querySelectorAll('.tablewrap')].map((w) => w.scrollLeft);
   lastHtml = html;
   $('#view').innerHTML = html;
-  document.querySelectorAll('.tablewrap').forEach((w, i) => { w.scrollLeft = scroll[i] ?? 0; });
   const el = selector && $(selector);
   if (el) {
     el.focus({ preventScroll: true });
@@ -448,10 +401,10 @@ async function render() {
 }
 const safeRender = () => render().catch((e) => {
   lastHtml = '';
-  $('#view').innerHTML = `<div class="card">Could not load: ${esc(e.message)}</div>`;
+  $('#view').innerHTML = `<p class="empty">Could not load this page. ${esc(e.message)}</p>`;
 });
 
-/** Refreshes what must stay current on every tab: the active call banner and new bookings. */
+/** Refreshes what must stay current on every page: the live call line and new bookings. */
 async function pollLive() {
   const [calls, appts] = await Promise.all([get('/api/calls'), get('/api/appointments')]);
   state.calls = calls;
@@ -461,16 +414,14 @@ async function pollLive() {
   live.hidden = !active.length;
   live.innerHTML = active.length ? `<i></i>${active.map((c) => {
     const secs = Math.max(0, Math.floor((Date.now() - utc(c.created_at)) / 1000));
-    return `Asha · ${esc(RESULT[c.status] ?? 'On call')}: ${esc(c.lead ?? c.phone ?? 'Unknown')} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-  }).join(' &nbsp;|&nbsp; ')}` : '';
+    return `Asha is talking to ${esc(c.lead ?? c.phone ?? 'someone')} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  }).join(' &nbsp;·&nbsp; ')}` : '';
 
   const scheduled = appts.filter((a) => a.status === 'scheduled');
   if (state.seenAppts) {
     for (const a of scheduled.filter((x) => !state.seenAppts.has(x.id))) {
-      const what = a.type === 'visit' ? `Asha booked a visit: ${a.lead}, ${a.project}` : `Asha set up a callback: ${a.lead}`;
+      const what = a.type === 'visit' ? `Asha booked ${a.lead} for ${a.project}` : `Asha set up a callback with ${a.lead}`;
       toast(`${what}, ${day(a.date)}, ${hhmm(a.time)}`, 8000);
-      state.freshAppts.add(a.id);
-      setTimeout(() => { state.freshAppts.delete(a.id); }, 15000);
     }
   }
   state.seenAppts = new Set(appts.map((a) => a.id));
@@ -480,10 +431,10 @@ async function poll() {
   if (document.hidden) return;
   try {
     await pollLive();
-    // Rebuilding would close an open dropdown or disturb a dialog.
+    // Rebuilding would close an open dropdown or disturb a sheet.
     if (!$('#dlg').open && !$('#ask').open && document.activeElement?.tagName !== 'SELECT') await render();
   } catch {
-    $('#status').innerHTML = '<span class="dot"></span>Reconnecting…';
+    $('#status').textContent = 'Reconnecting…';
   }
 }
 
@@ -491,46 +442,90 @@ function openDlg(html) {
   $('#dlgBody').innerHTML = html;
   $('#dlgBody h2').id = 'dlgTitle';
   $('#dlgProblem').hidden = true;
-  if (!$('#dlg').open) {
-    $('#dlg').showModal();
-    $('#dlgBody form input')?.focus();
-  }
+  if (!$('#dlg').open) $('#dlg').showModal();
+  $('#dlgBody form input:not([type=hidden])')?.focus();
 }
-const closeBtn = '<button data-close aria-label="Close">Close</button>';
+const closeBtn = '<button class="quiet dull" data-close>Close</button>';
+const facts = (pairs) => {
+  const shown = pairs.filter(([, v]) => v);
+  return shown.length ? `<dl class="facts">${shown.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : '';
+};
+
+function transcriptHtml(text) {
+  if (!text) return '<p class="meta">No transcript for this call.</p>';
+  return `<div class="transcript">${text.split('\n').filter(Boolean).map((line) => {
+    const m = line.match(/^(assistant|user):\s*(.*)$/i);
+    if (!m) return `<p class="meta">${esc(line)}</p>`;
+    const user = m[1].toLowerCase() === 'user';
+    return `<p class="${user ? 'u' : ''}"><span class="who">${user ? 'Customer' : 'Asha (AI)'}</span><span class="said">${esc(m[2])}</span></p>`;
+  }).join('')}</div>`;
+}
+
+function recordingHtml(call) {
+  if (!call.has_recording) return '';
+  return `<audio controls preload="none" src="/api/calls/${Number(call.id)}/recording"></audio>`;
+}
 
 async function showLead(id) {
   const l = await get(`/api/leads/${id}`);
-  const facts = [
-    ['Location', l.pref_location], ['BHK', l.pref_bhk], ['Budget', l.budget_lakh && price(l.budget_lakh)], ['Purpose', l.purpose],
-    ['Timeline', l.timeline], ['Project', l.interested_project], ['Next action', l.next_action], ['Enquiry', l.enquiry],
-  ];
   const decidedBy = ['new', 'unreachable'].includes(l.status) ? '' : l.status_by === 'team' ? 'Set by your team' : 'Set by Asha (AI)';
-  const appt = (a) => `<p class="small" style="margin:.25rem 0">${a.type === 'visit' ? `${esc(a.project)} visit` : 'Callback'},
-    ${day(a.date)} ${hhmm(a.time)}, ${esc(a.rep ?? 'Unassigned')} (${esc(a.status)})</p>`;
-  const call = (c) => `<p class="small" style="margin:.25rem 0">${when(c.created_at)}, ${esc(resultOf(c))}, ${dur(c.duration)}</p>
-    ${c.summary ? `<p class="small">AI summary: ${esc(c.summary)}</p>` : ''}${recordingHtml(c)}${c.transcript ? transcriptHtml(c.transcript) : ''}`;
-  openDlg(`<header><div><h2 class="title">${esc(l.name)}</h2><span class="small">${esc(l.phone)} · ${esc(l.source)}</span></div>${closeBtn}</header>
+  const canCall = meta.calling && !l.do_not_call && l.consent && !l.is_sample && !state.activeLeads.has(l.id);
+  const why = l.is_sample ? 'Sample leads are never called.' : l.do_not_call ? 'On the do-not-call list.' : !l.consent ? 'No consent on record, so Asha will not call.' : '';
+  const appt = (a) => `<p class="meta">${a.type === 'visit' ? `${esc(a.project)} visit` : 'Callback'}, ${day(a.date)} ${hhmm(a.time)}, ${esc(a.rep ?? 'Unassigned')} (${esc(a.status)})</p>`;
+  const call = (c) => `<div class="call"><p class="meta">${when(c.created_at)} · ${esc([resultOf(c), dur(c.duration)].filter(Boolean).join(' · '))}</p>
+    ${recordingHtml(c)}${c.transcript ? transcriptHtml(c.transcript) : ''}</div>`;
+  openDlg(`<header><div><h2 class="title">${esc(l.name)}</h2><span class="meta">${esc(l.phone)}</span></div>${closeBtn}</header>
+    ${canCall ? `<button class="primary" data-call="${l.id}">Call</button>` : why ? `<p class="meta">${why}</p>` : ''}
+    ${l.summary ? `<p style="margin-top:1.25rem">${esc(l.summary)}</p><p class="meta">AI summary</p>` : ''}
+    ${facts([['Looking for', need(l)], ['Purpose', l.purpose], ['Timeline', l.timeline], ['Project', l.interested_project], ['Next step', l.next_action], ['Enquiry', l.enquiry]])}
     <div class="correct">
       <label>Lead status<select id="leadStatus" data-id="${l.id}">${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${k === l.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-      <button data-dnc="${l.id}" data-value="${l.do_not_call ? 0 : 1}">${l.do_not_call ? 'Allow calls again' : 'Mark do not call'}</button>
-      <span class="small">${decidedBy}${l.do_not_call ? `${decidedBy ? ' · ' : ''}On the do-not-call list` : ''}</span>
+      <button class="quiet dull" data-dnc="${l.id}" data-value="${l.do_not_call ? 0 : 1}">${l.do_not_call ? 'Allow calls again' : 'Mark do not call'}</button>
     </div>
-    <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
-    ${l.summary ? `<p><span class="small">AI summary:</span> ${esc(l.summary)}</p>` : ''}
-    <h2>Appointments</h2>${l.appointments.length ? l.appointments.map(appt).join('') : '<p class="small">None</p>'}
-    <h2 style="margin-top:.875rem">Calls</h2>${l.calls.length ? l.calls.map(call).join('') : '<p class="small">None</p>'}`);
+    ${decidedBy ? `<p class="meta" style="margin-top:.375rem">${decidedBy}</p>` : ''}
+    ${l.appointments.length ? `<details data-key="lead-appts"><summary>Appointments</summary>${l.appointments.map(appt).join('')}</details>` : ''}
+    ${l.calls.length ? `<details data-key="lead-calls"><summary>Calls</summary>${l.calls.map(call).join('')}</details>` : ''}`);
 }
 
 function showCall(id) {
   const c = state.calls.find((x) => x.id === id);
   if (!c) return;
-  const facts = [
-    ['Result', resultOf(c)], ['Lead status', LABEL[c.lead_status] ?? c.lead_status], ['Duration', dur(c.duration)],
-    ['Campaign', c.campaign ?? 'Direct'], ['Project', c.project],
-  ];
-  openDlg(`<header><div><h2 class="title">${esc(c.lead ?? 'Unknown')}</h2><span class="small">${when(c.created_at)}</span></div>${closeBtn}</header>
-    <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
-    ${c.summary ? `<p><span class="small">AI summary:</span> ${esc(c.summary)}</p>` : ''}${recordingHtml(c)}${transcriptHtml(c.transcript)}`);
+  openDlg(`<header><div><h2 class="title">${esc(c.lead ?? 'Unknown')}</h2><span class="meta">${when(c.created_at)}</span></div>${closeBtn}</header>
+    ${c.summary ? `<p>${esc(c.summary)}</p><p class="meta">AI summary</p>` : ''}
+    ${facts([['Result', resultOf(c)], ['Lead status', LABEL[c.lead_status] ?? c.lead_status], ['Duration', dur(c.duration)], ['Campaign', c.campaign ?? 'Direct'], ['Project', c.project]])}
+    ${recordingHtml(c)}${transcriptHtml(c.transcript)}`);
+}
+
+function showProject(id) {
+  const p = state.projects.find((x) => x.id === id);
+  if (!p) return;
+  openDlg(`<header><div><h2 class="title">${esc(p.name)}</h2><span class="meta">${esc(p.location)}</span></div>${closeBtn}</header>
+    ${p.description ? `<p>${esc(p.description)}</p>` : ''}
+    ${facts([...p.configs.map((c) => [`${c.bhk} BHK`, `${c.size_sqft} sq ft, from ${price(c.price_lakh)}, ${c.units_left} left`]),
+      ['Possession', p.possession], ['Payment plan', p.payment_plan], ['Amenities', p.amenities.join(', ')], ['Nearby', p.landmarks.join(', ')]])}`);
+}
+
+async function openCampaign() {
+  const [leads, projects] = await Promise.all([get('/api/leads'), get('/api/projects')]);
+  const ready = leads.filter((l) => !l.dial_blocker);
+  state.names = new Map(ready.map((l) => [l.id, l.name]));
+  const picked = ready.filter((l) => state.selected.has(l.id)).length;
+  openDlg(`<header><h2 class="title">New campaign</h2>${closeBtn}</header>
+    <label>Name<input id="cName" placeholder="Whitefield Heights launch" value="${esc(state.cName)}"></label>
+    <label>Focus project<select id="cProject"><option value="">Whole portfolio</option>
+      ${projects.map((p) => `<option value="${p.id}" ${String(p.id) === state.cProject ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    ${ready.length ? `<div class="spread"><span class="meta" id="pickCount">${picked} of ${ready.length} selected</span><button class="quiet" data-pickall>Select all</button></div>
+      <div class="picks">${ready.map((l) => `<label class="check"><input type="checkbox" data-pick="${l.id}" ${state.selected.has(l.id) ? 'checked' : ''}>${esc(l.name)}</label>`).join('')}</div>`
+      : '<p class="meta" style="margin-bottom:1rem">Add a real lead with consent first. Sample leads are never called.</p>'}
+    <button class="primary" data-launch ${meta.calling && picked ? '' : 'disabled'}>Start campaign</button>
+    ${meta.calling ? '' : '<p class="meta" style="margin-top:.5rem">Calling is off.</p>'}`);
+}
+
+function syncPicks() {
+  const boxes = [...document.querySelectorAll('[data-pick]')];
+  const n = boxes.filter((b) => b.checked).length;
+  $('#pickCount').textContent = `${n} of ${boxes.length} selected`;
+  $('[data-launch]').disabled = !meta.calling || !n;
 }
 
 const FORMS = {
@@ -538,38 +533,36 @@ const FORMS = {
     <form data-form="lead">
       <label>Name<input name="name" required autocomplete="off"></label>
       <label>Phone<input name="phone" type="tel" required placeholder="+91 98xxxxxxxx" inputmode="tel" autocomplete="off"></label>
-      <label>Enquiry<input name="enquiry" placeholder="3 BHK in Whitefield"></label>
+      <label>Looking for<input name="enquiry" placeholder="3 BHK in Whitefield"></label>
       <label class="check"><input type="checkbox" name="consent" required>This person agreed to be contacted</label>
-      <button class="primary">Save lead</button>
-    </form>`,
+      <p style="margin-top:1rem"><button class="primary">Save lead</button></p>
+    </form>
+    <p class="meta" style="margin-top:1.5rem">Have a list? <button class="quiet" data-upload>Upload a CSV</button></p>`,
   csv: `<header><h2 class="title">Upload leads</h2>${closeBtn}</header>
-    <p class="small">CSV columns: name, phone, enquiry, source, consent. Set consent to yes only where you hold it.
-      Other leads are saved but will not be called.</p>
+    <p class="meta" style="margin-bottom:1rem">Columns: name, phone, enquiry, source, consent. Set consent to yes only where you hold it. Anyone else is saved but not called.</p>
     <form data-form="csv">
       <label>CSV file<input type="file" name="file" accept=".csv,text/csv" required></label>
       <button class="primary">Upload leads</button>
     </form>`,
   project: `<header><h2 class="title">Add project</h2>${closeBtn}</header>
     <form data-form="project">
-      <div class="grid2">
-        <label>Name<input name="name" required></label>
-        <label>Location<input name="location" required placeholder="Hebbal, Bengaluru"></label>
-      </div>
-      <label>Areas callers may mention, comma separated<input name="areas" placeholder="hebbal, manyata"></label>
-      <label>Description<textarea name="description" rows="2"></textarea></label>
-      <div class="grid2">
+      <label>Name<input name="name" required></label>
+      <label>Location<input name="location" required placeholder="Hebbal, Bengaluru"></label>
+      <label>Areas buyers may mention<input name="areas" placeholder="hebbal, manyata"></label>
+      <div class="split">
         <label>BHK<input name="bhk" type="number" min="1" max="9" required></label>
         <label>Size, sq ft<input name="size_sqft" type="number" min="1" required></label>
         <label>Starting price, lakh<input name="price_lakh" type="number" min="1" step="0.1" required></label>
         <label>Units left<input name="units_left" type="number" min="0" required></label>
       </div>
-      <label>Amenities, comma separated<input name="amenities"></label>
-      <div class="grid2">
+      <details data-key="project-more"><summary>More details</summary>
+        <label>Description<textarea name="description" rows="2"></textarea></label>
+        <label>Amenities, comma separated<input name="amenities"></label>
         <label>Possession<input name="possession"></label>
         <label>Nearby landmarks, comma separated<input name="landmarks"></label>
-      </div>
-      <label>Payment plan<input name="payment_plan"></label>
-      <button class="primary">Save project</button>
+        <label>Payment plan<input name="payment_plan"></label>
+      </details>
+      <p style="margin-top:1.25rem"><button class="primary">Save project</button></p>
     </form>`,
 };
 
@@ -581,7 +574,7 @@ function launchSummary(ids, project) {
 }
 
 document.addEventListener('click', act(async (e) => {
-  const t = e.target.closest('button,[data-lead],[data-callrow]');
+  const t = e.target.closest('button');
   if (!t) return;
   const d = t.dataset;
   if (d.ask) return $('#ask').close(d.ask);
@@ -597,13 +590,15 @@ document.addEventListener('click', act(async (e) => {
   }
   if (d.call) {
     await once(t, () => post(`/api/leads/${d.call}/call`));
-    toast('Calling now. Follow it in Call history.');
+    toast('Asha is calling now.');
+    if ($('#dlg').open) $('#dlg').close();
     await pollLive().catch(noop);
     return safeRender();
   }
   if ('addlead' in d) return openDlg(FORMS.lead);
   if ('upload' in d) return openDlg(FORMS.csv);
   if ('addproject' in d) return openDlg(FORMS.project);
+  if ('newcampaign' in d) return openCampaign();
   if (d.appt) {
     if (d.to === 'cancelled') {
       const noun = d.kind === 'visit' ? 'visit' : 'callback';
@@ -613,17 +608,13 @@ document.addEventListener('click', act(async (e) => {
     await once(t, () => post(`/api/appointments/${d.appt}`, { status: d.to }));
     return safeRender();
   }
-  if (d.pickall) {
-    document.querySelectorAll('[data-pick]').forEach((box) => {
-      const id = Number(box.dataset.pick);
-      if (d.pickall === 'all') state.selected.add(id); else state.selected.delete(id);
-    });
-    return safeRender();
+  if ('pickall' in d) {
+    document.querySelectorAll('[data-pick]').forEach((box) => { box.checked = true; state.selected.add(Number(box.dataset.pick)); });
+    return syncPicks();
   }
   if ('launch' in d) {
     const lead_ids = [...state.selected].filter((id) => $(`[data-pick="${id}"]`));
-    const select = $('#cProject');
-    const project = state.cProject ? select.selectedOptions[0]?.textContent : '';
+    const project = state.cProject ? $('#cProject').selectedOptions[0]?.textContent : '';
     const yes = await ask({
       title: `Call ${lead_ids.length === 1 ? '1 person' : `${lead_ids.length} people`} now?`,
       body: launchSummary(lead_ids, project), confirm: 'Start calling',
@@ -631,8 +622,9 @@ document.addEventListener('click', act(async (e) => {
     if (!yes) return;
     await once(t, () => post('/api/campaigns', { name: state.cName, project_id: Number(state.cProject) || null, lead_ids }));
     state.selected.clear(); state.cName = ''; state.cProject = '';
+    $('#dlg').close();
     toast('Campaign started');
-    return safeRender();
+    return;
   }
   if (d.stop) {
     const yes = await ask({ title: 'Stop this campaign?', body: 'No new calls will start, and queued calls are cancelled. Calls already ringing or connected will finish.', confirm: 'Stop campaign' });
@@ -652,6 +644,7 @@ document.addEventListener('click', act(async (e) => {
   }
   if (d.lead) return showLead(d.lead);
   if (d.callrow) return showCall(Number(d.callrow));
+  if (d.project) return showProject(Number(d.project));
 }));
 
 document.addEventListener('change', act(async (e) => {
@@ -659,7 +652,7 @@ document.addEventListener('change', act(async (e) => {
   if (dataset.pick) {
     const lead = Number(dataset.pick);
     if (checked) state.selected.add(lead); else state.selected.delete(lead);
-    safeRender();
+    syncPicks();
   }
   if (id === 'filter') { state.filter = value; safeRender(); }
   if (id === 'cProject') state.cProject = value;
@@ -673,6 +666,12 @@ document.addEventListener('input', (e) => {
   if (e.target.id === 'search') { state.search = e.target.value; safeRender(); }
   if (e.target.id === 'cName') state.cName = e.target.value;
 });
+// toggle does not bubble, so listen on the way down. Remembered so a refresh keeps a section open.
+document.addEventListener('toggle', (e) => {
+  const key = e.target.dataset?.key;
+  if (!key) return;
+  if (e.target.open) state.open.add(key); else state.open.delete(key);
+}, true);
 
 document.addEventListener('submit', act(async (e) => {
   const form = e.target.closest('[data-form]');
@@ -701,7 +700,16 @@ document.addEventListener('submit', act(async (e) => {
 }));
 
 $('#dlg').addEventListener('close', () => { safeRender(); });
-addEventListener('hashchange', () => { tab = tabFromHash(); links(); scrollTo(0, 0); safeRender(); });
+addEventListener('hashchange', () => {
+  tab = tabFromHash();
+  links();
+  scrollTo(0, 0);
+  const view = $('#view');
+  view.classList.remove('enter');
+  void view.offsetWidth;
+  view.classList.add('enter');
+  safeRender();
+});
 setInterval(poll, 4000);
 links();
 pollLive().catch(noop).finally(safeRender);

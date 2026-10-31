@@ -29,7 +29,7 @@ const send = (payload) => fetch(existing ? `${API}/v2/agent/${existing}` : `${AP
 });
 let res = await send(body);
 let text = await res.text();
-if (res.status === 400 || res.status === 422) {
+if ((res.status === 400 || res.status === 422) && /tool/i.test(text)) {
   // Bolna's schema types `tools` as an array but its description asks for a JSON string.
   const apiTools = body.agent_config.tasks[0].tools_config.api_tools;
   apiTools.tools = JSON.stringify(apiTools.tools);
