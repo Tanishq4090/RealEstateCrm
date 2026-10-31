@@ -1,27 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 300" width="840" height="300" role="img" aria-label="Of 2,241 US companies, 37 percent answered a web lead within an hour, 16 percent in 1 to 24 hours, 24 percent after 24 hours, and 23 percent never answered.">
-<style>
-text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.b{transform-box:fill-box;transform-origin:left;animation:g .55s cubic-bezier(.2,.7,.2,1) both}
-.f{animation:v .4s ease both}
-@keyframes g{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes v{from{opacity:0}to{opacity:1}}
-.b0{animation-delay:0s}.f0{animation-delay:0.3s}.b1{animation-delay:0.25s}.f1{animation-delay:0.55s}.b2{animation-delay:0.5s}.f2{animation-delay:0.8s}.b3{animation-delay:0.75s}.f3{animation-delay:1.05s}
-@media (prefers-reduced-motion:reduce){.b,.f{animation:none}}
-</style>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}</style>
 <text x="30" y="38" font-size="24" font-weight="700" fill="#e6edf3">How fast 2,241 companies answered a web lead</text>
 <text x="30" y="66" font-size="16" fill="#9198a1">Most leads wait. Almost a quarter are never answered at all.</text>
-<rect class="b b0" x="30" y="92" width="285.6" height="72" rx="8" fill="#ea580c"/>
-<text class="f f0" x="46" y="139" font-size="30" font-weight="700" fill="#1b1009">37%</text>
-<text class="f f0" x="32" y="190" font-size="15" fill="#9198a1">Within 1 hour</text>
-<rect class="b b1" x="318.6" y="92" width="121.8" height="72" rx="8" fill="#f4995f"/>
-<text class="f f1" x="334.6" y="139" font-size="30" font-weight="700" fill="#241c16">16%</text>
-<text class="f f1" x="320.6" y="190" font-size="15" fill="#9198a1">1 to 24 hours</text>
-<rect class="b b2" x="443.40000000000003" y="92" width="184.2" height="72" rx="8" fill="#fbdcc4"/>
-<text class="f f2" x="459.40000000000003" y="139" font-size="30" font-weight="700" fill="#241c16">24%</text>
-<text class="f f2" x="445.40000000000003" y="190" font-size="15" fill="#9198a1">After 24 hours</text>
-<rect class="b b3" x="630.6" y="92" width="179.4" height="72" rx="8" fill="#57534e"/>
-<text class="f f3" x="646.6" y="139" font-size="30" font-weight="700" fill="#fffaf5">23%</text>
-<text class="f f3" x="632.6" y="190" font-size="15" fill="#9198a1">Never</text>
+<rect x="30" y="92" width="285.6" height="72" rx="8" fill="#ea580c"/>
+<text x="46" y="139" font-size="30" font-weight="700" fill="#1b1009">37%</text>
+<text x="32" y="190" font-size="15" fill="#9198a1">Within 1 hour</text>
+<rect x="318.6" y="92" width="121.8" height="72" rx="8" fill="#f4995f"/>
+<text x="334.6" y="139" font-size="30" font-weight="700" fill="#241c16">16%</text>
+<text x="320.6" y="190" font-size="15" fill="#9198a1">1 to 24 hours</text>
+<rect x="443.40000000000003" y="92" width="184.2" height="72" rx="8" fill="#fbdcc4"/>
+<text x="459.40000000000003" y="139" font-size="30" font-weight="700" fill="#241c16">24%</text>
+<text x="445.40000000000003" y="190" font-size="15" fill="#9198a1">After 24 hours</text>
+<rect x="630.6" y="92" width="179.4" height="72" rx="8" fill="#57534e"/>
+<text x="646.6" y="139" font-size="30" font-weight="700" fill="#fffaf5">23%</text>
+<text x="632.6" y="190" font-size="15" fill="#9198a1">Never</text>
 <line x1="30" y1="214" x2="810" y2="214" stroke="#3d444d"/>
 <text x="30" y="246" font-size="17" fill="#e6edf3">Reply within an hour and you are <tspan font-weight="700" fill="#fb923c">nearly 7 times</tspan> as likely to qualify the lead as an hour later.</text>
 <text x="30" y="280" font-size="13" fill="#9198a1">Oldroyd, McElheran and Elkington, Harvard Business Review, 2011, as summarised by SmartCompany. US data.</text>
