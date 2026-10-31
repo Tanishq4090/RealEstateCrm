@@ -1,0 +1,25 @@
+import { existsSync, appendFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const envPath = path.join(ROOT, '.env');
+if (existsSync(envPath)) process.loadEnvFile(envPath);
+
+if (!process.env.TOOL_TOKEN) {
+  process.env.TOOL_TOKEN = randomBytes(24).toString('hex');
+  if (process.env.NODE_ENV !== 'test') appendFileSync(envPath, `\nTOOL_TOKEN=${process.env.TOOL_TOKEN}\n`);
+}
+
+export const config = {
+  get port() { return Number(process.env.PORT || 3000); },
+  get toolToken() { return process.env.TOOL_TOKEN; },
+  get bolnaKey() { return process.env.BOLNA_API_KEY || ''; },
+  get agentId() { return process.env.BOLNA_AGENT_ID || ''; },
+  get publicUrl() { return (process.env.PUBLIC_URL || '').replace(/\/$/, ''); },
+  get fromNumber() { return process.env.BOLNA_FROM_NUMBER || ''; },
+  get dashboardPassword() { return process.env.DASHBOARD_PASSWORD || ''; },
+  get voiceProfile() { return process.env.VOICE_PROFILE || 'sarvam'; },
+  get dbPath() { return process.env.DB_PATH || path.join(ROOT, 'propreach.db'); },
+};
