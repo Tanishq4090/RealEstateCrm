@@ -75,10 +75,17 @@ export function openDb(file) {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
+  migrate(db);
   if (!db.prepare('SELECT 1 FROM company').get()) seed(db);
   // This file holds buyers' phone numbers, so only this user may read it.
   for (const f of [file, `${file}-wal`, `${file}-shm`]) if (existsSync(f)) chmodSync(f, 0o600);
   return db;
+}
+
+/** Existing databases keep their data, so new columns are added here rather than in SCHEMA. */
+function migrate(db) {
+  const columns = db.prepare('PRAGMA table_info(leads)').all().map((c) => c.name);
+  if (!columns.includes('status_by')) db.exec("ALTER TABLE leads ADD COLUMN status_by TEXT NOT NULL DEFAULT 'asha'");
 }
 
 function seed(db) {

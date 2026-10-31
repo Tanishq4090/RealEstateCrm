@@ -6,15 +6,18 @@
 <title>Sign in · PropReach AI</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23185c4e'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
 <style>
+:root{color-scheme:light dark;--bg:#f6f5f1;--panel:#fff;--ink:#1c2321;--muted:#5f6965;--line:#e4e2db;--field:#8c8a82;--brand:#185c4e;--on-brand:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#131715;--panel:#1b201e;--ink:#e9edea;--muted:#a9b3ae;--line:#2f3633;--field:#7c8782;--brand:#62c9a7;--on-brand:#0c241d}}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:#f6f5f1;color:#1c2321;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-main{width:min(360px,100%);background:#fff;border:1px solid #e4e2db;border-radius:14px;padding:26px}
-h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}p{margin:0 0 18px;color:#66706c}
-label{display:block;font-size:13px;color:#66706c;margin-bottom:12px}
-input{width:100%;margin-top:3px;padding:9px 10px;border:1px solid #8c8a82;border-radius:8px;font:inherit;color:#1c2321}
-button{width:100%;padding:9px 13px;border:0;border-radius:8px;background:#185c4e;color:#fff;font:inherit;font-weight:600;cursor:pointer}
-button:disabled{opacity:.5;cursor:not-allowed}:focus-visible{outline:2px solid #185c4e;outline-offset:1px}
-#error{color:#b5381f;margin:12px 0 0;min-height:22px;font-size:14px}
+html{font-size:100%}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1rem;background:var(--bg);color:var(--ink);font:.9375rem/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{width:min(22.5rem,100%);background:var(--panel);border:1px solid var(--line);border-radius:.875rem;padding:1.625rem}
+h1{font-size:1.25rem;margin:0 0 .25rem;letter-spacing:-.01em}p{margin:0 0 1.125rem;color:var(--muted)}
+label{display:block;font-size:.8125rem;color:var(--muted);margin-bottom:.75rem}
+input{width:100%;min-height:2.75rem;margin-top:3px;padding:.5625rem .625rem;border:1px solid var(--field);border-radius:.5rem;font:inherit;font-size:1rem;color:var(--ink);background:var(--panel)}
+button{width:100%;min-height:2.75rem;padding:.5625rem .8125rem;border:0;border-radius:.5rem;background:var(--brand);color:var(--on-brand);font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+#error{margin:.75rem 0 0;min-height:1.375rem;font-size:.875rem;font-weight:600}
 </style>
 </head>
 <body>

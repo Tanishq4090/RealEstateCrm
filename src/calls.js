@@ -5,7 +5,7 @@ import { isDialable, speakDate, speakPrice, speakTime } from './parse.js';
 
 const API = 'https://api.bolna.ai';
 const FAILED = new Set(['no-answer', 'busy', 'failed', 'canceled', 'stopped', 'error', 'balance-low']);
-const LEAD_STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
+export const LEAD_STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
 
 export function portfolioBrief(db) {
   return allProjects(db).map((p) => {
@@ -116,7 +116,7 @@ export function handleExecutionEvent(db, event) {
 function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
   // Safety net: the post-call extraction keeps an opt-out even if the agent never reached update_lead.
   if (connected && outcome['Do Not Call']?.objective === 'Yes') {
-    db.prepare("UPDATE leads SET do_not_call = 1, status = 'not_interested' WHERE id = ?").run(leadId);
+    db.prepare("UPDATE leads SET do_not_call = 1, status = 'not_interested', status_by = 'asha' WHERE id = ?").run(leadId);
     db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(leadId);
   }
   const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
@@ -142,8 +142,8 @@ function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
     }
   }
 
-  db.prepare(`UPDATE leads SET status = ?, next_action = ?, do_not_call = ?, summary = COALESCE(?, summary), updated_at = datetime('now') WHERE id = ?`)
-    .run(status, nextAction, doNotCall, engaged ? summary : null, leadId);
+  db.prepare(`UPDATE leads SET status = ?, status_by = ?, next_action = ?, do_not_call = ?, summary = COALESCE(?, summary), updated_at = datetime('now') WHERE id = ?`)
+    .run(status, status === lead.status ? lead.status_by : 'asha', nextAction, doNotCall, engaged ? summary : null, leadId);
   // The rep sees the conversation before the callback or visit.
   if (summary) {
     db.prepare(`UPDATE appointments SET notes = TRIM(COALESCE(notes || ' | ', '') || ?) WHERE lead_id = ? AND status = 'scheduled' AND created_at >= ?`)
@@ -159,11 +159,30 @@ export async function runCampaign(db, campaignId, fetchImpl = fetch, gapMs = 150
   // Each lead is read fresh, so someone who opts out mid-campaign is not dialled.
   const dial = (id) => dialLead(db, db.prepare('SELECT * FROM leads WHERE id = ?').get(id), campaign, fetchImpl)
     .catch((err) => ({ ok: false, error: err.message }));
+  const stopped = () => db.prepare('SELECT status FROM campaigns WHERE id = ?').get(campaignId).status === 'stopped';
   for (const { id } of rows) {
+    if (stopped()) { mark.run('skipped', 'campaign stopped', campaignId, id); continue; }
     let result = await dial(id);
     if (result.retry) { await new Promise((r) => setTimeout(r, retryMs)); result = await dial(id); }
     mark.run(result.ok ? 'dialled' : 'skipped', result.error ?? null, campaignId, id);
+    // Stop may have been pressed while this dial was in flight, so its call was not yet there to cancel.
+    if (result.ok && stopped()) await cancelQueued(db, campaignId, fetchImpl);
     if (result.ok && gapMs) await new Promise((r) => setTimeout(r, gapMs));
   }
-  db.prepare("UPDATE campaigns SET status = 'done' WHERE id = ?").run(campaignId);
+  db.prepare("UPDATE campaigns SET status = 'done' WHERE id = ? AND status = 'running'").run(campaignId);
+}
+
+async function cancelQueued(db, campaignId, fetchImpl) {
+  const queued = db.prepare("SELECT execution_id FROM calls WHERE campaign_id = ? AND ended_at IS NULL AND status IN ('queued', 'scheduled')").all(campaignId);
+  await Promise.all(queued.map(({ execution_id: id }) => fetchImpl(`${API}/call/${encodeURIComponent(id)}/stop`, {
+    method: 'POST', headers: { Authorization: `Bearer ${config.bolnaKey}` },
+  }).catch(() => null)));
+}
+
+/** Ends the dialling loop and cancels what Bolna has queued. Calls already ringing or connected carry on. */
+export async function stopCampaign(db, campaignId, fetchImpl = fetch) {
+  const { changes } = db.prepare("UPDATE campaigns SET status = 'stopped' WHERE id = ? AND status = 'running'").run(campaignId);
+  if (!changes) return false;
+  await cancelQueued(db, campaignId, fetchImpl);
+  return true;
 }

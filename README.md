@@ -57,7 +57,8 @@ If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. 
 - The agent says it is an AI on a recorded line in its first sentence.
 - Leads are dialled only with recorded consent, and the server rechecks each lead at the moment of dialling.
 - An opt-out goes straight to the do-not-call list and cancels that buyer's appointments. A post-call extraction catches any opt-out the live agent missed.
-- Campaigns skip anyone called in the last 24 hours or holding a booking.
+- Campaigns skip anyone called in the last 24 hours or holding a booking. Launching needs confirming, and a running campaign can be stopped: queued calls are cancelled, while calls already ringing or connected finish.
+- People have the final say: the team can correct any lead status or do-not-call decision the AI made.
 - A booking is confirmed to a buyer only after the reservation succeeds.
 - Sample leads use numbers that cannot exist, and the dialler refuses them.
 - Calling hours are set to 9 AM to 9 PM recipient time through Bolna's calling guardrails, which the server relies on rather than enforcing itself. Confirm this and sender registration against current TRAI rules before calling real prospects.

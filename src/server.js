@@ -7,13 +7,15 @@ import { pathToFileURL } from 'node:url';
 import { createAuth, isHttps, same } from './auth.js';
 import { config, ROOT } from './config.js';
 import { allProjects, clearSamples, company, openDb } from './db.js';
-import { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign } from './calls.js';
+import { recentActivity } from './activity.js';
+import { dialBlocker, dialLead, handleExecutionEvent, LEAD_STATUSES, portfolioBrief, runCampaign, stopCampaign } from './calls.js';
 import { TOOL_HANDLERS } from './tools.js';
 import { normalizePhone, parseCsv } from './parse.js';
 
 const MAX_BODY = 2_000_000;
 const CLIENT_HEADER = 'x-propreach-client';
 const MIN_PASSWORD = 12;
+const TEAM_STATUSES = new Set([...LEAD_STATUSES, 'new', 'unreachable', 'unclassified']);
 
 function baseHeaders(req) {
   return {
@@ -151,6 +153,19 @@ const LEAD_DETAIL = {
     LEFT JOIN reps r ON r.id = a.rep_id WHERE a.lead_id = ? ORDER BY a.date DESC`,
 };
 
+/** People get the final say over what the AI decided. */
+function correctLead(db, id, { status, do_not_call: doNotCall }) {
+  if (status !== undefined) {
+    db.prepare("UPDATE leads SET status = ?, status_by = 'team', updated_at = datetime('now') WHERE id = ?").run(status, id);
+  }
+  if (doNotCall !== undefined) {
+    const on = doNotCall ? 1 : 0;
+    db.prepare("UPDATE leads SET do_not_call = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?").run(on, on ? 'None' : 'Review before calling', id);
+    if (on) db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(id);
+  }
+  return { ok: true };
+}
+
 function saveProject(db, b) {
   const list = (v) => (Array.isArray(v) ? v : String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean));
   const configs = (b.configs ?? []).map((c) => ({ bhk: Number(c.bhk), size_sqft: Number(c.size_sqft), price_lakh: Number(c.price_lakh), units_left: Number(c.units_left) }));
@@ -175,6 +190,7 @@ async function api(db, req, res, pathname, fetchImpl) {
   const id = Number(pathname.split('/')[3]);
 
   if (route === 'GET /api/overview') return send(res, 200, overview(db));
+  if (route === 'GET /api/activity') return send(res, 200, recentActivity(db));
   if (route === 'GET /api/projects') return send(res, 200, allProjects(db));
   if (route === 'POST /api/projects') return send(res, 201, saveProject(db, parseJson(await readBody(req))));
 
@@ -195,6 +211,12 @@ async function api(db, req, res, pathname, fetchImpl) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
     if (!lead) return send(res, 404, { error: 'Lead not found' });
     return send(res, 200, { ...lead, calls: db.prepare(LEAD_DETAIL.calls).all(id).map(publicCall), appointments: db.prepare(LEAD_DETAIL.appointments).all(id) });
+  }
+  if (/^POST \/api\/leads\/\d+$/.test(route)) {
+    if (!db.prepare('SELECT 1 FROM leads WHERE id = ?').get(id)) return send(res, 404, { error: 'Lead not found' });
+    const b = parseJson(await readBody(req));
+    if (b.status !== undefined && !TEAM_STATUSES.has(b.status)) return send(res, 400, { error: 'Invalid status' });
+    return send(res, 200, correctLead(db, id, b));
   }
   if (/^POST \/api\/leads\/\d+\/call$/.test(route)) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
@@ -247,6 +269,10 @@ async function api(db, req, res, pathname, fetchImpl) {
     for (const lead of leadIds) db.prepare('INSERT OR IGNORE INTO campaign_leads (campaign_id, lead_id) VALUES (?, ?)').run(campaignId, lead);
     runCampaign(db, campaignId).catch((err) => console.error('campaign failed', err));
     return send(res, 202, { id: campaignId });
+  }
+  if (/^POST \/api\/campaigns\/\d+\/stop$/.test(route)) {
+    const stopped = await stopCampaign(db, id, fetchImpl);
+    return stopped ? send(res, 200, { ok: true }) : send(res, 409, { error: 'That campaign has already finished' });
   }
   if (route === 'POST /api/samples/clear') { clearSamples(db); return send(res, 200, { ok: true }); }
   return send(res, 404, { error: 'Not found' });

@@ -11,6 +11,8 @@ const { dialBlocker, dialLead, handleExecutionEvent, runCampaign } = await impor
 const { buildAgent, SYSTEM_PROMPT, WELCOME, keywordsFor } = await import('../src/agent-config.js');
 const { createApp } = await import('../src/server.js');
 const { allProjects } = await import('../src/db.js');
+const { bestQuote, recentActivity } = await import('../src/activity.js');
+const { stopCampaign } = await import('../src/calls.js');
 const { config } = await import('../src/config.js');
 const net = await import('node:net');
 const nodeHttp = await import('node:http');
@@ -706,4 +708,93 @@ test('sign-in works through the public tunnel address', async () => {
       assert.equal((await tunnelled({ method: 'POST', path: '/api/samples/clear', headers: { ...origin, cookie } }, '{}')).statusCode, 200);
     });
   } finally { process.env.PUBLIC_URL = ''; }
+});
+
+test('stopping a campaign ends dialling and cancels only what is queued', async () => {
+  WITH_CREDS();
+  try {
+    const db = fresh();
+    const ids = [newLead(db)];
+    for (const phone of ['+919812345671', '+919812345672']) ids.push(Number(db.prepare("INSERT INTO leads (name, phone, consent) VALUES ('X', ?, 1)").run(phone).lastInsertRowid));
+    const c = addCampaign(db, ...ids);
+    const log = [], stops = [];
+    const fetchImpl = async (url, o) => {
+      if (url.endsWith('/stop')) { stops.push(url); return new Response('{}', { status: 200 }); }
+      const res = await okFetch(log)(url, o);
+      if (log.length === 1) await stopCampaign(db, c, fetchImpl); // the builder presses Stop during the first dial
+      return res;
+    };
+    await runCampaign(db, c, fetchImpl, 0);
+    assert.equal(log.length, 1, 'no new calls after Stop');
+    assert.equal(db.prepare('SELECT status FROM campaigns WHERE id = ?').get(c).status, 'stopped');
+    assert.deepEqual(db.prepare("SELECT detail FROM campaign_leads WHERE campaign_id = ? AND state = 'skipped'").all(c).map((r) => r.detail), ['campaign stopped', 'campaign stopped']);
+    assert.deepEqual(stops, ['https://api.bolna.ai/call/x1/stop'], 'the call placed while Stop was pressed is cancelled too');
+    db.prepare("UPDATE calls SET status = 'stopped' WHERE execution_id = 'x1'").run();
+
+    db.prepare("INSERT INTO calls (execution_id, lead_id, campaign_id, status) VALUES ('q1', ?, ?, 'queued'), ('r1', ?, ?, 'in-progress')").run(ids[0], c, ids[1], c);
+    db.prepare("UPDATE campaigns SET status = 'running' WHERE id = ?").run(c);
+    stops.length = 0;
+    assert.equal(await stopCampaign(db, c, fetchImpl), true);
+    assert.deepEqual(stops, ['https://api.bolna.ai/call/q1/stop'], 'a connected call is left alone');
+    assert.equal(await stopCampaign(db, c, fetchImpl), false, 'stopping twice reports nothing to stop');
+  } finally { NO_CREDS(); }
+});
+
+test('the team can correct the AI, and the record shows who decided', async () => {
+  await withApp(async ({ db, base }) => {
+    const lead = newLead(db);
+    const post = (body) => fetch(`${base}/api/leads/${lead}`, { method: 'POST', headers: DASHBOARD, body: JSON.stringify(body) });
+    updateLead(db, { lead_id: lead, status: 'cold' });
+    assert.equal(leadRow(db, lead).status_by, 'asha');
+    assert.equal((await post({ status: 'hot' })).status, 200);
+    assert.deepEqual([leadRow(db, lead).status, leadRow(db, lead).status_by], ['hot', 'team']);
+    assert.equal((await post({ status: 'nonsense' })).status, 400);
+
+    bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '11:30 AM' });
+    await post({ do_not_call: true });
+    assert.equal(leadRow(db, lead).do_not_call, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM appointments WHERE lead_id = ? AND status = 'scheduled'").get(lead).n, 0);
+    assert.equal(dialBlocker(leadRow(db, lead)), 'on do-not-call list');
+    await post({ do_not_call: false });
+    assert.equal(dialBlocker(leadRow(db, lead)), null);
+    assert.equal(leadRow(db, lead).next_action, 'Review before calling');
+    assert.equal((await fetch(`${base}/api/leads/99999`, { method: 'POST', headers: DASHBOARD, body: '{"status":"hot"}' })).status, 404);
+  });
+});
+
+test('an older database gains the new column and keeps its data', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'propreach-test-'));
+  try {
+    const file = path.join(dir, 'old.db');
+    const db = openDb(file);
+    const lead = newLead(db);
+    db.exec('ALTER TABLE leads DROP COLUMN status_by');
+    db.close();
+    const again = openDb(file);
+    assert.equal(leadRow(again, lead).status_by, 'asha');
+    again.close();
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the activity feed tells the story in the buyer\'s words', () => {
+  assert.equal(bestQuote('assistant: Hi\nuser: Yes\nuser: I want a 3 BHK near Whitefield please\nuser: this is a much longer line about nothing in particular at all'), 'I want a 3 BHK near Whitefield please');
+  assert.equal(bestQuote('user: Yes.\nuser: Okay sure.'), null);
+  assert.ok(bestQuote(`user: I want ${'a very long line '.repeat(20)}`).length <= 120);
+
+  const db = fresh();
+  const lead = newLead(db);
+  db.prepare("UPDATE leads SET pref_bhk = 3, budget_lakh = 150 WHERE id = ?").run(lead);
+  startCall(db, 'a1', lead);
+  bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '11:30 AM' });
+  handleExecutionEvent(db, { id: 'a1', status: 'completed', transcript: 'assistant: Hi\nuser: I want to visit Whitefield on Saturday' });
+  const [story] = recentActivity(db);
+  assert.equal(story.kind, 'visit');
+  assert.equal(story.quote, 'I want to visit Whitefield on Saturday');
+  assert.equal(story.date, saturday());
+  assert.deepEqual(story.details, ['Whitefield Heights', '3 BHK', '1 crore 50 lakh']);
+
+  updateLead(db, { lead_id: lead, status: 'not_interested', do_not_call: 'true' });
+  assert.equal(recentActivity(db)[0].kind, 'optout');
+  assert.ok(recentActivity(db).some((s) => s.note), 'sample calls fall back to the AI summary');
+  assert.ok(recentActivity(db).length <= 6);
 });

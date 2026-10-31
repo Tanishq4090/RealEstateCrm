@@ -233,9 +233,9 @@ export function updateLead(db, args) {
     db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(lead.id);
   }
   db.prepare(`UPDATE leads SET pref_location = ?, pref_bhk = ?, budget_lakh = ?, purpose = ?, timeline = ?, interested_project = ?,
-      status = ?, do_not_call = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?`)
+      status = ?, status_by = ?, do_not_call = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(next.pref_location, next.pref_bhk, next.budget_lakh, next.purpose, next.timeline, next.interested_project,
-      next.status, next.do_not_call, next.next_action, lead.id);
+      next.status, next.status === lead.status ? lead.status_by : 'asha', next.do_not_call, next.next_action, lead.id);
   return { ok: true, saved: true, next_step: 'Restate any booking in one sentence, thank them and say goodbye.' };
 }
 
