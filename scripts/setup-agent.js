@@ -48,7 +48,7 @@ if (!existing) {
 }
 // Extractions are the safety net for opt-outs. Only missing ones are added, so reruns are safe.
 const listed = await (await fetch(`${API}/dispositions/?agent_id=${agentId}`, { headers })).json().catch(() => []);
-const have = new Set((Array.isArray(listed) ? listed : listed.data ?? []).map((d) => d.name));
+const have = new Set((listed.agent_dispositions ?? []).map((d) => d.name));
 const missing = DISPOSITIONS.filter((d) => !have.has(d.name));
 if (missing.length) {
   const made = await fetch(`${API}/dispositions/bulk`, { method: 'POST', headers, body: JSON.stringify({ agent_id: agentId, dispositions: missing }) });
