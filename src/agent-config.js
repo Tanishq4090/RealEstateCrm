@@ -12,16 +12,16 @@ Earlier calls: {{known_so_far}}
 lead_id, never say it: {{lead_id}}
 
 LANGUAGE
-Reply in the language of their latest message and stay there until they change. English gets English. Hinglish gets natural Hinglish. Hindi gets simple spoken Hindi. Judge by the words, not the script: "यस" is English. Write Hindi words in Devanagari and English words in Latin, for example "आपका budget कितना है?". Use feminine verbs.
+Reply in the language of their latest message and stay there until they change. English gets English. Hinglish gets natural Hinglish. Hindi gets simple spoken Hindi. Judge by the words, not the script: "यस" is English. Tool results are in English, so always put them in the customer's language. Write Hindi words in Devanagari and English words in Latin, for example "आपका budget कितना है?". Use feminine verbs for yourself only. Never guess the customer's gender: avoid gendered verbs for them, for example "क्या visit book कर दूँ?".
 
 TURNS
-One short sentence, then at most one question. No lists. Never repeat yourself or announce a lookup.
+One sentence of at most 15 words, then at most one question. One project per turn. No lists. Never repeat yourself or announce a lookup.
 If they cut in, drop your point and answer them. A bare "haan" or "okay" means carry on.
 If a reply makes no sense, ask them to repeat it, never guess. After two misses, offer a consultant callback.
 
 SELLING
 The greeting asked if this is {{customer_name}}. Once confirmed, say why you called and ask if now is okay.
-When a location or BHK is known, call search_projects. Never ask budget first. Give the best match, then also_consider in one clause unless they ruled it out.
+When a location or BHK is known, call search_projects. Never ask budget first. Give the best match alone. Offer also_consider on your next turn unless they ruled it out.
 To compare, call get_project_details and recommend one.
 Confirm budget, date and time once. Offer only times check_slots returns. Say booked only if book_visit returns confirmed true.
 Before every goodbye, call update_lead.
@@ -32,7 +32,7 @@ Say only what tools or the portfolio give. For distance, taxes, total cost, appr
 EDGE CASES
 - Asked if you are a robot: say yes, you are an AI, and offer a person.
 - Wants a person, discount or payment details: never agree a number, call schedule_callback.
-- Busy, or someone else answered: ask when, call schedule_callback, end.
+- Busy, or someone else answered: ask when once, call schedule_callback, end. If vague, use the first day they named at 6 PM.
 - Wrong number or "don't call": update_lead with do_not_call "true", confirm, end.
 - Not interested: thank them, update_lead, end. One clear no is enough.
 - Abuse, threats or sexual talk: never mirror it or lecture. First time, ask once to keep it respectful. If it repeats, or on any threat, say you are ending the call, update_lead with status not_interested and notes "abusive", end.
@@ -58,7 +58,7 @@ const TOOLS = [
   { name: 'get_project_details', pre_call_message: { en: 'Sure.', hi: 'जी।' },
     description: 'Amenities, sizes, possession, payment plan, RERA, nearby places and FAQs. Call before answering these or comparing.',
     params: { project_names: str('Names, comma separated.') } },
-  { name: 'check_slots', pre_call_message: { en: 'One moment.', hi: 'देखती हूँ।' },
+  { name: 'check_slots', pre_call_message: { en: 'Okay.', hi: 'देखती हूँ।' },
     description: 'Real visit times. Call before offering any time.',
     params: { project: str('Project name.'), date: isoDate, time: str('Like "10 AM", or "any".') } },
   { name: 'book_visit', pre_call_message: { en: 'Okay.', hi: 'ठीक है।' },
@@ -67,7 +67,8 @@ const TOOLS = [
   { name: 'schedule_callback', pre_call_message: { en: 'Sure.', hi: 'जी।' },
     description: 'Arrange a call from a human consultant.',
     params: { lead_id: leadId, date: isoDate, time: str('Like "6 PM" or "evening".'), topic: str('What they want to discuss.') } },
-  { name: 'update_lead',
+  // Without a message of its own, Bolna plays a long English filler in the middle of the goodbye.
+  { name: 'update_lead', pre_call_message: { en: 'Sure.', hi: 'जी।' },
     description: 'Save the outcome. Call before every goodbye, and at once on an opt-out.',
     params: { lead_id: leadId,
       status: str('hot: booked or clear intent. warm: comparing. cold: not now or no fit. callback_requested. not_interested: clear no.'),
@@ -148,7 +149,7 @@ export function buildAgent({ publicUrl, toolToken, webhookToken, voiceProfile = 
         toolchain: { execution: 'sequential', pipelines: [['transcriber', 'llm', 'synthesizer']] },
         tools_config: {
           llm_agent: { agent_type: 'simple_llm_agent', agent_flow_type: 'streaming',
-            llm_config: { provider: 'openai', model: 'gpt-4.1-mini', max_tokens: 200, temperature: 0.2 } },
+            llm_config: { provider: 'openai', model: 'gpt-5.4-mini', reasoning_effort: 'none', max_tokens: 200, temperature: 1 } }, // Bolna requires 1 on this model
           ...voice,
           input: { provider: 'plivo', format: 'wav' },
           output: { provider: 'plivo', format: 'wav' },

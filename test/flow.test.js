@@ -839,3 +839,17 @@ test('frustration alone is not treated as abuse', () => {
     extracted_data: { 'Lead Outcome': { Abusive: { objective: 'No' }, 'Do Not Call': { objective: 'No' }, 'Lead Status': { objective: 'warm' } } } });
   assert.deepEqual([leadRow(db, lead).do_not_call, leadRow(db, lead).status], [0, 'warm']);
 });
+
+test('every tool has its own short filler, so Bolna never plays its long default', () => {
+  const { tools } = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w' }).agent_config.tasks[0].tools_config.api_tools;
+  for (const tool of tools) assert.ok(tool.pre_call_message?.length <= 8, `${tool.name}: ${tool.pre_call_message}`);
+});
+
+test('someone who asks for a call but hangs up first is not lost', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  startCall(db, 'c1', lead);
+  handleExecutionEvent(db, { id: 'c1', status: 'completed', transcript: 'user: call me later tomorrow',
+    extracted_data: { 'Lead Outcome': { Abusive: { objective: 'No' }, 'Do Not Call': { objective: 'No' }, 'Lead Status': { objective: 'callback_requested' } } } });
+  assert.deepEqual([leadRow(db, lead).status, leadRow(db, lead).next_action], ['callback_requested', 'Call back: no time agreed']);
+});

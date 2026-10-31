@@ -139,6 +139,7 @@ function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
     if (LEAD_STATUSES.has(read)) {
       status = read;
       if (read === 'not_interested') { doNotCall = 1; nextAction = 'None'; }
+      if (read === 'callback_requested') nextAction = 'Call back: no time agreed';
     } else {
       status = 'unclassified'; nextAction = 'Review the transcript';
     }

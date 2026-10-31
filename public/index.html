@@ -7,9 +7,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23f97316'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
 <style>
 :root{color-scheme:light;
-  --bg:#fff;--raise:#fff;--ink:#231a14;--muted:#6b5f55;--line:#f3e6da;--field:#a08f83;--hover:#fff7f0;--tint:#fff4eb;
-  --orange:#f97316;--accent:#cf4a05;--accent-hover:#ad3d04;--on-accent:#fff;--accent-soft:#fff0e4;
-  --hot:#b91c1c;--warm:#8a5800;--callback:#7b4a6b;--cold:#566470;--live:#f97316;--backdrop:#231a1459}
+  --bg:#f7e9db;--side:#f3e0ce;--raise:#fdf5ec;--ink:#2a1e16;--muted:#5c4e43;--line:#ecd8c4;--field:#8d7866;--hover:#f6e5d4;--tint:#f8e8d8;
+  --orange:#f97316;--accent:#af3b03;--accent-hover:#932f00;--on-accent:#fff7ee;--accent-soft:#f9dcc3;
+  --hot:#a61a12;--warm:#744a00;--callback:#6e3f5e;--cold:#4a5761;--live:#f97316;--backdrop:#2a1e1659}
 *{box-sizing:border-box}[hidden]{display:none!important}html{font-size:100%;-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}a{color:var(--accent);text-underline-offset:.2em}a:hover{color:var(--accent-hover)}
@@ -18,7 +18,7 @@ svg.icon{width:1.125rem;height:1.125rem;flex:none;fill:none;stroke:currentColor;
 
 /* App frame */
 .app{display:grid;grid-template-columns:15rem minmax(0,1fr);min-height:100vh}
-.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:1.25rem .875rem;background:var(--raise);border-right:1px solid var(--line)}
+.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:1.25rem .875rem;background:var(--side);border-right:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:.625rem;padding:.125rem .625rem 1rem;font-weight:650;font-size:1.0625rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none}.brand:hover{color:var(--ink)}
 .tile{display:grid;place-items:center;width:1.75rem;height:1.75rem;border-radius:.5rem;background:var(--orange);color:var(--on-accent)}.tile svg{width:1rem;height:1rem;fill:currentColor;stroke:none}
 .navgroup{display:contents}.navlabel{font-size:.8125rem;font-weight:600;color:var(--muted);padding:1.125rem .625rem .375rem}
@@ -121,7 +121,7 @@ audio{width:100%;margin:.5rem 0}.call+.call{margin-top:1rem}.transcript{margin-t
 @media (max-width:47.5em){
   .app{display:block}.side{position:static;height:auto;flex-direction:row;align-items:center;padding:.5rem 1.25rem;border-right:0;border-bottom:1px solid var(--line)}
   .brand{padding:0;min-height:2.75rem}.account,.navlabel{display:none}
-  #links{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--raise);border-top:1px solid var(--line);padding:.25rem .25rem calc(.25rem + env(safe-area-inset-bottom))}
+  #links{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--side);border-top:1px solid var(--line);padding:.25rem .25rem calc(.25rem + env(safe-area-inset-bottom))}
   #links a{flex-direction:column;justify-content:center;gap:.125rem;min-height:3.25rem;margin:0;padding:.125rem;font-size:.8125rem}#links .count{display:none}
   #links a[href="#campaigns"],#links a[href="#projects"],#links a[href="#reports"]{display:none}#links a[href="#more"]{display:flex}
   main{padding:1.25rem 1.25rem calc(6rem + env(safe-area-inset-bottom))}h1{font-size:1.4375rem}.pagehead{margin-bottom:1.125rem}.pagehead .actions{width:100%}.pagehead .actions button{flex:1}
