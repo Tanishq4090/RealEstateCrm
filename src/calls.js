@@ -2,18 +2,25 @@
 import { config } from './config.js';
 import { allProjects, company } from './db.js';
 import { isDialable, speakDate, speakPrice, speakTime } from './parse.js';
+import { updateLead } from './tools.js';
 
 const API = 'https://api.bolna.ai';
 const FAILED = new Set(['no-answer', 'busy', 'failed', 'canceled', 'stopped', 'error', 'balance-low']);
 export const ABUSIVE_NEXT_STEP = 'Review: abusive call';
 export const LEAD_STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
 
+/** Everything Asha needs to answer at once, so ordinary questions never wait on a lookup. */
 export function portfolioBrief(db) {
   return allProjects(db).map((p) => {
     const units = p.configs.filter((c) => c.units_left > 0)
-      .map((c) => `${c.bhk} BHK from ${speakPrice(c.price_lakh)}`).join(', ');
-    return `${p.name} in ${p.location}: ${units || 'sold out'}`;
-  }).join('. ');
+      .map((c) => `${c.bhk} BHK, ${c.size_sqft} square feet, from ${speakPrice(c.price_lakh)}`).join('; ');
+    const details = [
+      p.possession && `Possession: ${p.possession}`, p.landmarks.length && `Near ${p.landmarks.join(', ')}`,
+      p.amenities.length && `Amenities: ${p.amenities.join(', ')}`, p.payment_plan && `Payment: ${p.payment_plan}`,
+      ...p.faqs.map((f) => `${f.q} ${f.a}`),
+    ].filter(Boolean);
+    return `- ${p.name}, ${p.location}: ${units || 'sold out'}. ${details.join('. ')}.`;
+  }).join('\n');
 }
 
 export function dialBlocker(lead) {
@@ -114,15 +121,27 @@ export function handleExecutionEvent(db, event) {
   return { final: true };
 }
 
+/** Saves what the buyer said, read from the transcript so the call itself never waits on it. */
+const NO_TIME = 'Call back: no time agreed';
+
+function saveDetails(db, leadId, outcome) {
+  const said = (name) => outcome[name]?.subjective;
+  updateLead(db, { lead_id: leadId, location: said('Preferred Location'), bhk: said('BHK'), budget: said('Budget'), purpose: said('Purpose'),
+    timeline: said('Timeline'), interested_project: said('Project'), notes: said('Team Notes') });
+}
+
 function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
-  // Safety net: the post-call extraction keeps an opt-out even if the agent never reached update_lead.
+  if (connected) saveDetails(db, leadId, outcome);
+  const pending = (type) => db.prepare(`SELECT 1 FROM appointments WHERE lead_id = ? AND type = ? AND status = 'scheduled' AND created_at >= ?`).get(leadId, type, startedAt);
+  // Asha saves nothing mid-call, so the transcript decides the outcome. A booking made on this call outranks a read of "no".
+  const read = connected ? outcome['Lead Status']?.objective : null;
   const abusive = connected && outcome.Abusive?.objective === 'Yes';
-  if (abusive || (connected && outcome['Do Not Call']?.objective === 'Yes')) {
+  const saidNo = read === 'not_interested' && !pending('visit') && !pending('callback');
+  if (abusive || saidNo || (connected && outcome['Do Not Call']?.objective === 'Yes')) {
     db.prepare("UPDATE leads SET do_not_call = 1, status = 'not_interested', status_by = 'asha' WHERE id = ?").run(leadId);
     db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(leadId);
   }
   const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
-  const pending = (type) => db.prepare(`SELECT 1 FROM appointments WHERE lead_id = ? AND type = ? AND status = 'scheduled' AND created_at >= ?`).get(leadId, type, startedAt);
   const engaged = connected || pending('visit') || pending('callback');
   let { status, next_action: nextAction, do_not_call: doNotCall } = lead;
 
@@ -134,15 +153,13 @@ function finalizeLead(db, leadId, { connected, summary, startedAt, outcome }) {
     status = 'hot';
   } else if (pending('callback')) {
     if (!['hot', 'warm'].includes(status)) status = 'callback_requested';
+  } else if (db.prepare("SELECT 1 FROM appointments WHERE lead_id = ? AND type = 'visit' AND status = 'scheduled'").get(leadId)) {
+    // A chat with someone who already has a visit booked does not cool them down.
+  } else if (LEAD_STATUSES.has(read)) {
+    status = read;
+    if (read === 'callback_requested' && !nextAction?.includes(NO_TIME)) nextAction = [nextAction, NO_TIME].filter(Boolean).join('; ');
   } else if (status === 'new' || status === 'unreachable') {
-    const read = outcome['Lead Status']?.objective;
-    if (LEAD_STATUSES.has(read)) {
-      status = read;
-      if (read === 'not_interested') { doNotCall = 1; nextAction = 'None'; }
-      if (read === 'callback_requested') nextAction = 'Call back: no time agreed';
-    } else {
-      status = 'unclassified'; nextAction = 'Review the transcript';
-    }
+    status = 'unclassified'; nextAction = 'Review the transcript';
   }
 
   db.prepare(`UPDATE leads SET status = ?, status_by = ?, next_action = ?, do_not_call = ?, summary = COALESCE(?, summary), updated_at = datetime('now') WHERE id = ?`)

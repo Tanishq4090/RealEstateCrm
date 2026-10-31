@@ -6,22 +6,22 @@ Built for the Bolna Symphony Buildathon. All projects and sample leads are ficti
 
 ## What makes it different
 
-The agent is not tied to the campaign project. Every search covers the full portfolio and returns the best cross-project suggestion with a computed reason, such as "Sarjapur Residences, 15 lakh less and 140 square feet larger". A buyer called about Whitefield can ask about Sarjapur, compare the two, and book a visit in one call.
+The agent is not tied to the campaign project. Asha knows every project on every call and suggests a better fit when there is one, such as a cheaper or larger home elsewhere. A buyer called about Whitefield can ask about Sarjapur, compare the two, and book a visit in one call.
 
-Live prices and availability come from tools, so a project added in the dashboard is available on the next call.
+Project details are loaded into each call, so a project added in the dashboard is available on the next call, and Asha answers straight away instead of pausing to look things up.
 
 ## How it works
 
 ```
 Dashboard ── launch ──> Bolna ── phone call ──> Buyer
     ^                     │
-    │                     ├─ tools mid-call ──> search, details, slots, book, callback, update lead
+    │                     ├─ tools mid-call ──> book a visit, arrange a callback
     └── SQLite <── server ┴─ webhook after call ──> transcript, summary, extraction, final lead status
 ```
 
 | Path | Purpose |
 |---|---|
-| `src/tools.js` | The six tools the agent calls. A database constraint stops one slot going to two buyers. |
+| `src/tools.js` | The booking tools the agent calls, and project search. A database constraint stops one slot going to two buyers. |
 | `src/calls.js` | Dialling guards, webhook handling and lead classification. |
 | `src/agent-config.js` | Agent prompt, voices, tool wiring and post-call extractions. |
 | `src/parse.js` | Turns spoken input into data: "1 crore 35 lakh", "after 6", "डेढ़ करोड़". |

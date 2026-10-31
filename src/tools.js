@@ -5,7 +5,6 @@ import { addDays, clean, parseBhk, parseBudgetLakh, parseDate, parseTime, speakD
 
 export const SLOTS = ['10:00', '11:30', '14:00', '16:00'];
 const STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
-const AFTER_SAVE = 'Call update_lead before saying goodbye.';
 
 const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -163,11 +162,19 @@ export function bookVisit(db, { lead_id, project, date, time }, now = new Date()
   const confirmed = `Visit to ${p.name} is confirmed for ${speakDate(day)} at ${speakTime(slot)}.`;
   const existing = db.prepare(`SELECT * FROM appointments WHERE type = 'visit' AND status = 'scheduled' AND lead_id = ? AND project_id = ?`).get(lead.id, p.id);
   if (existing?.date === day && existing.time === slot) {
-    return { ok: true, confirmed: true, already_booked: true, next_step: AFTER_SAVE, message: confirmed };
+    return { ok: true, confirmed: true, already_booked: true, message: confirmed };
   }
   const clash = db.prepare(`SELECT p.name FROM appointments a JOIN projects p ON p.id = a.project_id
     WHERE a.type = 'visit' AND a.status = 'scheduled' AND a.lead_id = ? AND a.date = ? AND a.time = ? AND a.project_id != ?`).get(lead.id, day, slot, p.id);
   if (clash) return { ok: false, confirmed: false, message: `They already have a visit to ${clash.name} at that time. Offer a different time.` };
+
+  if (takenSlots(db, p.id, day).has(slot)) {
+    const open = openSlots(db, p.id, day);
+    const minutes = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const closest = open.reduce((a, b) => (Math.abs(minutes(b) - minutes(slot)) < Math.abs(minutes(a) - minutes(slot)) ? b : a), open[0]);
+    return { ok: false, confirmed: false, message: 'That time is taken. Do not confirm it.',
+      closest_open_time: closest ? speakTime(closest) : null, other_days: nearbyOptions(db, p.id, day) };
+  }
 
   const rep = nextRep(db, day, slot);
   db.exec('BEGIN IMMEDIATE');
@@ -184,7 +191,7 @@ export function bookVisit(db, { lead_id, project, date, time }, now = new Date()
     return { ok: false, confirmed: false, message: 'That slot was just taken. Do not confirm it.',
       open_times: openSlots(db, p.id, day).map(speakTime), other_days: nearbyOptions(db, p.id, day) };
   }
-  return { ok: true, confirmed: true, next_step: AFTER_SAVE, message: confirmed,
+  return { ok: true, confirmed: true, message: confirmed,
     rescheduled: Boolean(existing), location: p.location, sales_contact: rep?.name };
 }
 
@@ -210,7 +217,7 @@ export function scheduleCallback(db, { lead_id, date, time, topic }, now = new D
       .run(`Human callback ${speakDate(day)}, ${speakTime(slot)}`, lead.id);
   }
   const who = rep?.name ? `A property consultant, ${rep.name},` : 'A property consultant';
-  return { ok: true, confirmed: true, next_step: AFTER_SAVE, message: `${who} will call on ${speakDate(day)} at ${speakTime(slot)}.` };
+  return { ok: true, confirmed: true, message: `${who} will call on ${speakDate(day)} at ${speakTime(slot)}.` };
 }
 
 export function updateLead(db, args) {

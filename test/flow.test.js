@@ -7,7 +7,7 @@ for (const name of ['BOLNA_API_KEY', 'BOLNA_AGENT_ID', 'DASHBOARD_PASSWORD', 'PU
 const { openDb, clearSamples } = await import('../src/db.js');
 const { addDays, nextWeekday, normalizePhone, isDialable, parseBudgetLakh, parseBhk, parseCsv, parseTime, clean, todayIST } = await import('../src/parse.js');
 const { bookVisit, checkSlots, getProjectDetails, scheduleCallback, searchProjects, updateLead } = await import('../src/tools.js');
-const { dialBlocker, dialLead, handleExecutionEvent, runCampaign } = await import('../src/calls.js');
+const { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign } = await import('../src/calls.js');
 const { buildAgent, SYSTEM_PROMPT, WELCOME, keywordsFor } = await import('../src/agent-config.js');
 const { createApp } = await import('../src/server.js');
 const { allProjects } = await import('../src/db.js');
@@ -205,7 +205,7 @@ test('agent config: disclosure, tools and parameters line up', () => {
   const a = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't' });
   assert.match(a.agent_config.agent_welcome_message, /AI assistant/);
   const { tools, tools_params } = a.agent_config.tasks[0].tools_config.api_tools;
-  assert.equal(tools.length, 6);
+  assert.deepEqual(tools.map((x) => x.name), ['book_visit', 'schedule_callback']);
   for (const t of tools) {
     assert.equal(t.key, 'custom_task');
     assert.deepEqual(Object.keys(tools_params[t.name].param).sort(), Object.keys(t.parameters.properties).sort());
@@ -451,7 +451,7 @@ test('agent stays inside the limits Bolna enforces', () => {
   assert.ok(!JSON.stringify(tools.api_tools).includes('hook'));
   const plain = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', voiceProfile: 'default' }).agent_config.tasks[0].tools_config;
   assert.equal(plain.multilingual_config, undefined);
-  assert.equal(plain.api_tools.tools[0].pre_call_message, 'Okay.');
+  assert.equal(plain.api_tools.tools[0].pre_call_message, 'One second.');
 });
 
 test('scorecard and funnel count people, not attempts', async () => {
@@ -803,7 +803,7 @@ test('one transcriber and one voice cover English, Hindi and Hinglish', () => {
   const db = fresh();
   const task = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: allProjects(db) }).agent_config.tasks[0];
   const tools = task.tools_config;
-  assert.deepEqual([tools.transcriber.provider, tools.synthesizer.provider], ['soniox', 'kalpa']);
+  assert.deepEqual([tools.transcriber.provider, tools.synthesizer.provider], ['soniox', 'sarvam']);
   assert.equal(tools.multilingual_config, undefined);
   assert.equal(typeof tools.api_tools.tools[0].pre_call_message, 'string');
   assert.equal(task.task_config.number_of_words_for_interruption, 3);
@@ -812,8 +812,8 @@ test('one transcriber and one voice cover English, Hindi and Hinglish', () => {
 
 test('the prompt and tools stay compact, because they cost time on every turn', () => {
   const { tools } = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w' }).agent_config.tasks[0].tools_config.api_tools;
-  assert.ok(SYSTEM_PROMPT.length < 3300, `prompt is ${SYSTEM_PROMPT.length} characters`);
-  assert.ok(JSON.stringify(tools).length < 3300, `tools are ${JSON.stringify(tools).length} characters`);
+  assert.ok(SYSTEM_PROMPT.length < 3800, `prompt is ${SYSTEM_PROMPT.length} characters`);
+  assert.ok(JSON.stringify(tools).length < 1100, `tools are ${JSON.stringify(tools).length} characters`);
   for (const word of ['Hinglish', 'ending the call', 'OTP', 'Devanagari']) assert.ok(SYSTEM_PROMPT.includes(word), word);
 });
 
@@ -842,7 +842,7 @@ test('frustration alone is not treated as abuse', () => {
 
 test('every tool has its own short filler, so Bolna never plays its long default', () => {
   const { tools } = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w' }).agent_config.tasks[0].tools_config.api_tools;
-  for (const tool of tools) assert.ok(tool.pre_call_message?.length <= 8, `${tool.name}: ${tool.pre_call_message}`);
+  for (const tool of tools) assert.ok(tool.pre_call_message?.length <= 12, `${tool.name}: ${tool.pre_call_message}`);
 });
 
 test('someone who asks for a call but hangs up first is not lost', () => {
@@ -852,4 +852,85 @@ test('someone who asks for a call but hangs up first is not lost', () => {
   handleExecutionEvent(db, { id: 'c1', status: 'completed', transcript: 'user: call me later tomorrow',
     extracted_data: { 'Lead Outcome': { Abusive: { objective: 'No' }, 'Do Not Call': { objective: 'No' }, 'Lead Status': { objective: 'callback_requested' } } } });
   assert.deepEqual([leadRow(db, lead).status, leadRow(db, lead).next_action], ['callback_requested', 'Call back: no time agreed']);
+});
+
+test('a taken time comes straight back with alternatives, in one request', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  const r = bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '10 AM' });
+  assert.deepEqual([r.confirmed, r.closest_open_time], [false, '11:30 AM']);
+  assert.ok(r.other_days.length > 0);
+});
+
+test('the call brief answers common questions without a lookup', () => {
+  const brief = portfolioBrief(fresh());
+  for (const fact of ['1150 square feet', '90 lakh', 'December 2027', 'ITPL', 'Clubhouse', '10 percent on booking', 'car park']) assert.ok(brief.includes(fact), fact);
+  assert.equal(brief.split('\n').length, 3);
+});
+
+test('details spoken on the call are saved from the transcript afterwards', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  startCall(db, 'd1', lead);
+  const said = (v) => ({ subjective: v });
+  handleExecutionEvent(db, { id: 'd1', status: 'completed', transcript: 'user: I want a home',
+    extracted_data: { 'Lead Outcome': { 'Preferred Location': said('Whitefield'), BHK: said('3'), Budget: said('1.5 crore'), Purpose: said('Self use'),
+      Timeline: said('unknown'), Project: said('Whitefield Heights'), 'Team Notes': said('Send brochure on WhatsApp'), 'Lead Status': { objective: 'warm' } } } });
+  const l = leadRow(db, lead);
+  assert.deepEqual([l.pref_location, l.pref_bhk, l.budget_lakh, l.purpose, l.timeline, l.interested_project, l.status],
+    ['Whitefield', 3, 150, 'Self use', null, 'Whitefield Heights', 'warm']);
+  assert.match(l.next_action, /Send brochure/);
+});
+
+test('a returning lead is reclassified from the transcript, since Asha saves nothing mid-call', () => {
+  const db = fresh();
+  const end = (id, lead, status, extra = {}) => { startCall(db, id, lead);
+    handleExecutionEvent(db, { id, status: 'completed', transcript: 'user: hello', extracted_data: { 'Lead Outcome': { 'Lead Status': { objective: status }, ...extra } } }); };
+  const lead = newLead(db);
+  db.prepare("UPDATE leads SET status = 'warm' WHERE id = ?").run(lead);
+  end('r1', lead, 'cold');
+  assert.equal(leadRow(db, lead).status, 'cold');
+  end('r2', lead, 'not_interested');
+  assert.deepEqual([leadRow(db, lead).status, leadRow(db, lead).do_not_call, leadRow(db, lead).next_action], ['not_interested', 1, 'None']);
+});
+
+test('saying no cancels an earlier visit, a chat alone does not, and a booking on the call beats the read', () => {
+  const db = fresh();
+  const end = (id, lead, status) => { startCall(db, id, lead);
+    handleExecutionEvent(db, { id, status: 'completed', transcript: 'user: hello', extracted_data: { 'Lead Outcome': { 'Lead Status': { objective: status } } } }); };
+  const visits = (lead) => db.prepare("SELECT COUNT(*) AS n FROM appointments WHERE lead_id = ? AND status = 'scheduled'").get(lead).n;
+
+  const lead = newLead(db);
+  startCall(db, 'v1', lead);
+  assert.equal(bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '2 PM' }).confirmed, true);
+  handleExecutionEvent(db, { id: 'v1', status: 'completed', transcript: 'user: yes', extracted_data: { 'Lead Outcome': { 'Lead Status': { objective: 'not_interested' } } } });
+  assert.deepEqual([leadRow(db, lead).status, visits(lead)], ['hot', 1]);
+  db.exec("UPDATE appointments SET created_at = datetime('now', '-1 day')"); // Timestamps are per second, and this booking belongs to an earlier call.
+
+  end('v2', lead, 'warm');
+  assert.deepEqual([leadRow(db, lead).status, visits(lead)], ['hot', 1]);
+
+  end('v3', lead, 'not_interested');
+  assert.deepEqual([leadRow(db, lead).status, leadRow(db, lead).do_not_call, visits(lead)], ['not_interested', 1, 0]);
+});
+
+test('blank answers from the transcript never overwrite what is known', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  db.prepare("UPDATE leads SET pref_location = 'Whitefield', next_action = 'Share brochure' WHERE id = ?").run(lead);
+  startCall(db, 'b1', lead);
+  const said = (v) => ({ subjective: v });
+  handleExecutionEvent(db, { id: 'b1', status: 'completed', transcript: 'user: hello', extracted_data: { 'Lead Outcome': {
+    'Preferred Location': said('unknown'), BHK: said('unknown'), Budget: said('unknown'), 'Team Notes': said('none'), 'Lead Status': { objective: 'warm' } } } });
+  const l = leadRow(db, lead);
+  assert.deepEqual([l.pref_location, l.next_action], ['Whitefield', 'Share brochure']);
+});
+
+test('a promise made on the call survives a callback with no agreed time', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  startCall(db, 'p1', lead);
+  handleExecutionEvent(db, { id: 'p1', status: 'completed', transcript: 'user: send the brochure', extracted_data: { 'Lead Outcome': {
+    'Team Notes': { subjective: 'Send brochure on WhatsApp' }, 'Lead Status': { objective: 'callback_requested' } } } });
+  assert.equal(leadRow(db, lead).next_action, 'Send brochure on WhatsApp; Call back: no time agreed');
 });
