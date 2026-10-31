@@ -135,7 +135,8 @@ export function buildAgent({ publicUrl, toolToken, webhookToken, voiceProfile = 
       agent_welcome_message: WELCOME,
       webhook_url: `${publicUrl}/webhooks/bolna?token=${webhookToken}`,
       call_summary_enabled: true,
-      calling_guardrails: { call_start_hour: 9, call_end_hour: 21 },
+      // TRAI keeps promotional calls off by default before 10 AM and after 9 PM.
+      calling_guardrails: { call_start_hour: 10, call_end_hour: 21 },
       tasks: [{
         task_type: 'conversation',
         toolchain: { execution: 'sequential', pipelines: [['transcriber', 'llm', 'synthesizer']] },

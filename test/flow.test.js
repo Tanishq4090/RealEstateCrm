@@ -934,3 +934,8 @@ test('a promise made on the call survives a callback with no agreed time', () =>
     'Team Notes': { subjective: 'Send brochure on WhatsApp' }, 'Lead Status': { objective: 'callback_requested' } } } });
   assert.equal(leadRow(db, lead).next_action, 'Send brochure on WhatsApp; Call back: no time agreed');
 });
+
+test('calls stay inside the hours TRAI leaves on by default', () => {
+  const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: [] });
+  assert.deepEqual(agent.agent_config.calling_guardrails, { call_start_hour: 10, call_end_hour: 21 });
+});
