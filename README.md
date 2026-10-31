@@ -101,7 +101,7 @@ She replies in the language of the buyer's latest message and stays there until 
 | "Is there anything under 1 crore?" | "Sure, Electronic City Homes starts at 75 lakh." |
 | "1 crore से कम कुछ है क्या?" | "हाँ जी, Electronic City Homes 75 lakh से शुरू होता है।" |
 
-These are examples of the design. English is tested on live calls, and Hindi and Hinglish are not yet.
+These are examples of the design. English and Hindi have both worked on real test calls, on earlier settings, including a visit booked in Hindi. Hinglish is not yet tested.
 
 ## Architecture
 
@@ -254,7 +254,7 @@ Secrets live in `.env`, which git ignores. If a key is ever exposed, replace it 
 
 ## Known limits
 
-- English is the only language tested on live calls. If a provider misbehaves, set `VOICE_PROFILE=sarvam` and rerun `npm run setup-agent`.
+- Only English and Hindi have been tried on live calls, both on earlier settings. If a provider misbehaves, set `VOICE_PROFILE=sarvam` and rerun `npm run setup-agent`.
 - The current turn design and voice have not yet been measured on a live call.
 - Project facts travel in the call prompt, which suits a builder's normal portfolio but would need a different approach for hundreds of projects.
 - The items marked for later in [India's calling rules](#indias-calling-rules) must be finished before a real campaign.
