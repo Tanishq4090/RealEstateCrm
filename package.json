@@ -9,6 +9,7 @@
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",
     "setup-agent": "node --disable-warning=ExperimentalWarning scripts/setup-agent.js",
-    "simulate": "node --disable-warning=ExperimentalWarning scripts/simulate.js"
+    "simulate": "node --disable-warning=ExperimentalWarning scripts/simulate.js",
+    "reset": "rm -f propreach.db propreach.db-wal propreach.db-shm"
   }
 }

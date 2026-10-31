@@ -20,6 +20,7 @@ function send(res, status, body, type = 'application/json') {
 
 async function readBody(req) {
   let raw = '';
+  req.setEncoding('utf8'); // keeps a Hindi character intact when it spans two chunks
   for await (const chunk of req) {
     raw += chunk;
     if (raw.length > MAX_BODY) throw Object.assign(new Error('Body too large'), { status: 413 });
@@ -48,7 +49,7 @@ function addLead(db, row) {
   const consent = ['1', 'true', 'yes', 'y'].includes(String(row.consent ?? '').trim().toLowerCase()) ? 1 : 0;
   const result = db.prepare(`INSERT INTO leads (name, phone, enquiry, source, consent) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (phone) DO NOTHING`).run(name, phone, row.enquiry ?? '', row.source ?? 'Upload', consent);
-  return result.changes ? { ok: true, id: Number(result.lastInsertRowid) } : { ok: false, error: `Duplicate phone: ${phone}` };
+  return result.changes ? { ok: true, id: Number(result.lastInsertRowid), consent } : { ok: false, error: `Duplicate phone: ${phone}` };
 }
 
 function overview(db) {
@@ -58,8 +59,12 @@ function overview(db) {
     leads: one('SELECT COUNT(*) n FROM leads'),
     attempted: one('SELECT COUNT(*) n FROM calls'),
     connected: one('SELECT COUNT(*) n FROM calls WHERE connected = 1'),
+    attemptedLeads: one('SELECT COUNT(DISTINCT lead_id) n FROM calls'),
+    connectedLeads: one('SELECT COUNT(DISTINCT lead_id) n FROM calls WHERE connected = 1'),
     interested: (byStatus.hot ?? 0) + (byStatus.warm ?? 0) + (byStatus.callback_requested ?? 0),
+    qualified: one("SELECT COUNT(*) n FROM leads WHERE status = 'hot' OR (status = 'warm' AND budget_lakh IS NOT NULL AND pref_bhk IS NOT NULL)"),
     hot: byStatus.hot ?? 0,
+    hotBudgetLakh: one("SELECT COALESCE(SUM(budget_lakh), 0) n FROM leads WHERE status = 'hot'"),
     visits: one("SELECT COUNT(*) n FROM appointments WHERE type = 'visit' AND status != 'cancelled'"),
     visitLeads: one("SELECT COUNT(DISTINCT lead_id) n FROM appointments WHERE type = 'visit' AND status != 'cancelled'"),
     callbacks: one("SELECT COUNT(*) n FROM appointments WHERE type = 'callback' AND status != 'cancelled'"),
@@ -69,6 +74,18 @@ function overview(db) {
     company: company(db),
   };
 }
+
+const CAMPAIGN_SCORECARD = `SELECT c.*, p.name project,
+    (SELECT COUNT(*) FROM campaign_leads x WHERE x.campaign_id = c.id) total,
+    (SELECT COUNT(*) FROM campaign_leads x WHERE x.campaign_id = c.id AND x.state = 'dialled') dialled,
+    (SELECT COUNT(*) FROM campaign_leads x WHERE x.campaign_id = c.id AND x.state = 'skipped') skipped,
+    (SELECT GROUP_CONCAT(DISTINCT x.detail) FROM campaign_leads x WHERE x.campaign_id = c.id AND x.state = 'skipped') skip_reasons,
+    (SELECT COUNT(DISTINCT k.lead_id) FROM calls k WHERE k.campaign_id = c.id AND k.connected = 1) reached,
+    (SELECT COUNT(DISTINCT k.lead_id) FROM calls k JOIN leads l ON l.id = k.lead_id
+      WHERE k.campaign_id = c.id AND k.connected = 1 AND l.status IN ('hot', 'warm', 'callback_requested')) interested,
+    (SELECT COUNT(DISTINCT a.lead_id) FROM appointments a JOIN calls k ON k.lead_id = a.lead_id
+      WHERE k.campaign_id = c.id AND a.type = 'visit' AND a.status != 'cancelled') visits
+  FROM campaigns c LEFT JOIN projects p ON p.id = c.project_id ORDER BY c.id DESC`;
 
 const LEAD_DETAIL = {
   calls: 'SELECT * FROM calls WHERE lead_id = ? ORDER BY id DESC',
@@ -113,7 +130,8 @@ async function api(db, req, res, pathname) {
   }
   if (route === 'POST /api/leads/csv') {
     const results = parseCsv(await readBody(req)).map((row) => addLead(db, row));
-    return send(res, 200, { added: results.filter((r) => r.ok).length, errors: results.filter((r) => !r.ok).map((r) => r.error) });
+    const added = results.filter((r) => r.ok);
+    return send(res, 200, { added: added.length, noConsent: added.filter((r) => !r.consent).length, errors: results.filter((r) => !r.ok).map((r) => r.error) });
   }
   if (/^GET \/api\/leads\/\d+$/.test(route)) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
@@ -128,8 +146,10 @@ async function api(db, req, res, pathname) {
   }
 
   if (route === 'GET /api/calls') {
-    return send(res, 200, db.prepare(`SELECT c.*, l.name lead, l.phone, m.name campaign FROM calls c LEFT JOIN leads l ON l.id = c.lead_id
-      LEFT JOIN campaigns m ON m.id = c.campaign_id ORDER BY c.id DESC LIMIT 200`).all());
+    return send(res, 200, db.prepare(`SELECT c.*, l.name lead, l.phone, l.status lead_status, m.name campaign,
+        COALESCE(p.name, l.interested_project) project
+      FROM calls c LEFT JOIN leads l ON l.id = c.lead_id LEFT JOIN campaigns m ON m.id = c.campaign_id
+      LEFT JOIN projects p ON p.id = m.project_id ORDER BY c.id DESC LIMIT 200`).all());
   }
   if (route === 'GET /api/appointments') {
     return send(res, 200, db.prepare(`SELECT a.*, l.name lead, l.phone, l.pref_bhk, l.budget_lakh, l.summary, p.name project, r.name rep
@@ -139,19 +159,28 @@ async function api(db, req, res, pathname) {
   if (/^POST \/api\/appointments\/\d+$/.test(route)) {
     const { status } = parseJson(await readBody(req));
     if (!['scheduled', 'completed', 'cancelled'].includes(status)) return send(res, 400, { error: 'Invalid status' });
-    db.prepare('UPDATE appointments SET status = ? WHERE id = ?').run(status, id);
+    let changed;
+    try {
+      changed = db.prepare('UPDATE appointments SET status = ? WHERE id = ?').run(status, id).changes;
+    } catch (err) {
+      if (String(err.message).includes('UNIQUE')) return send(res, 409, { error: 'That slot has been taken' });
+      throw err;
+    }
+    if (!changed) return send(res, 404, { error: 'Appointment not found' });
+    if (status !== 'scheduled') {
+      db.prepare(`UPDATE leads SET next_action = ?, updated_at = datetime('now') WHERE id = (SELECT lead_id FROM appointments WHERE id = ?)`)
+        .run(status === 'cancelled' ? 'Rebook or follow up' : 'Follow up after visit', id);
+    }
     return send(res, 200, { ok: true });
   }
 
   if (route === 'GET /api/campaigns') {
-    return send(res, 200, db.prepare(`SELECT c.*, p.name project, COUNT(x.lead_id) total,
-      SUM(x.state = 'dialled') dialled, SUM(x.state = 'skipped') skipped
-      FROM campaigns c LEFT JOIN projects p ON p.id = c.project_id LEFT JOIN campaign_leads x ON x.campaign_id = c.id
-      GROUP BY c.id ORDER BY c.id DESC`).all());
+    return send(res, 200, db.prepare(CAMPAIGN_SCORECARD).all());
   }
   if (route === 'POST /api/campaigns') {
     const b = parseJson(await readBody(req));
-    const leadIds = (b.lead_ids ?? []).map(Number).filter(Boolean);
+    const known = db.prepare('SELECT 1 FROM leads WHERE id = ?');
+    const leadIds = (Array.isArray(b.lead_ids) ? b.lead_ids : []).map(Number).filter((id) => id && known.get(id));
     if (!b.name?.trim() || !leadIds.length) return send(res, 400, { error: 'A name and at least one lead are required' });
     if (!config.bolnaKey || !config.agentId) return send(res, 400, { error: 'Connect Bolna before launching a campaign' });
     const { lastInsertRowid } = db.prepare('INSERT INTO campaigns (name, project_id) VALUES (?, ?)').run(b.name.trim(), b.project_id || null);
@@ -167,24 +196,25 @@ async function api(db, req, res, pathname) {
 export function createApp(db) {
   const page = () => readFileSync(path.join(ROOT, 'public/index.html'));
   return http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://localhost');
-    const { pathname } = url;
     try {
+      const url = new URL(req.url, 'http://localhost');
+      const { pathname } = url;
       if (pathname === '/healthz') return send(res, 200, { ok: true });
 
       if (req.method === 'POST' && pathname.startsWith('/tools/')) {
         const auth = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
         if (!same(auth, config.toolToken)) return send(res, 401, { error: 'Unauthorized' });
-        const handler = TOOL_HANDLERS[pathname.slice('/tools/'.length)];
-        if (!handler || !Object.hasOwn(TOOL_HANDLERS, pathname.slice('/tools/'.length))) return send(res, 404, { error: 'Unknown tool' });
+        const name = pathname.slice('/tools/'.length);
+        if (!Object.hasOwn(TOOL_HANDLERS, name)) return send(res, 404, { error: 'Unknown tool' });
+        const handler = TOOL_HANDLERS[name];
         const args = { ...Object.fromEntries(url.searchParams), ...parseJson(await readBody(req)) };
         const result = handler(db, args);
-        console.log(`[tool] ${pathname.slice(7)} ${JSON.stringify(args)} -> ${result.ok ? 'ok' : result.message}`);
+        console.log(`[tool] ${name} ${JSON.stringify(args)} -> ${result.ok ? 'ok' : result.message}`);
         return send(res, 200, result);
       }
 
       if (req.method === 'POST' && pathname === '/webhooks/bolna') {
-        if (!same(url.searchParams.get('token') ?? '', config.toolToken)) return send(res, 401, { error: 'Unauthorized' });
+        if (!same(url.searchParams.get('token') ?? '', config.webhookToken)) return send(res, 401, { error: 'Unauthorized' });
         return send(res, 200, handleExecutionEvent(db, parseJson(await readBody(req))));
       }
 
@@ -203,7 +233,13 @@ export function createApp(db) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (config.publicUrl && !config.dashboardPassword) {
+    console.error('Set DASHBOARD_PASSWORD: PUBLIC_URL makes this dashboard public.');
+    process.exit(1);
+  }
   const db = openDb(config.dbPath);
+  // A restart ends the dialling loop. Never resume it silently.
+  db.prepare("UPDATE campaigns SET status = 'interrupted' WHERE status = 'running'").run();
   createApp(db).listen(config.port, () => {
     console.log(`PropReach dashboard: http://localhost:${config.port}`);
     console.log(`Portfolio: ${portfolioBrief(db)}`);

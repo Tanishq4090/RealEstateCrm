@@ -1,5 +1,5 @@
 import { existsSync, appendFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -15,6 +15,8 @@ if (!process.env.TOOL_TOKEN) {
 export const config = {
   get port() { return Number(process.env.PORT || 3000); },
   get toolToken() { return process.env.TOOL_TOKEN; },
+  // Webhook URLs end up in logs, so a leaked one must not also unlock the tools.
+  get webhookToken() { return createHash('sha256').update(`webhook:${process.env.TOOL_TOKEN}`).digest('hex'); },
   get bolnaKey() { return process.env.BOLNA_API_KEY || ''; },
   get agentId() { return process.env.BOLNA_AGENT_ID || ''; },
   get publicUrl() { return (process.env.PUBLIC_URL || '').replace(/\/$/, ''); },

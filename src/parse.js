@@ -1,6 +1,9 @@
 // Normalises the loose values an LLM passes from a phone conversation.
 
-const MISSING = new Set(['', 'any', 'unknown', 'none', 'null', 'undefined', 'n/a', 'na', 'not specified', 'nil']);
+const MISSING = new Set([
+  '', 'any', 'anywhere', 'unknown', 'none', 'null', 'undefined', 'n/a', 'na', 'nil',
+  'not specified', 'no preference', 'not sure', 'not mentioned', 'not provided',
+]);
 
 /** Treats sentinels and unsubstituted %(x)s templates as absent. */
 export function clean(value) {
@@ -10,41 +13,70 @@ export function clean(value) {
   return s;
 }
 
-/** "1.5 crore", "90 lakh", "15000000", "₹1.2 cr" -> amount in lakh. */
+const ONES = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+};
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+const TENS_RE = new RegExp(`\\b(${Object.keys(TENS).join('|')})(?:[ -](${Object.keys(ONES).slice(0, 9).join('|')}))?\\b`, 'g');
+const ONES_RE = new RegExp(`\\b(${Object.keys(ONES).join('|')})\\b( and a half)?`, 'g');
+
+const asciiDigits = (s) => s.replace(/[०-९]/g, (d) => d.charCodeAt(0) - 0x966);
+
+/** Spoken numbers to digits: "one and a half", "ninety five", "dedh", "one point five". */
+const wordsToDigits = (text) => text
+  .replace(/\b(?:dedh|derh)\b|डेढ़?/g, '1.5').replace(/\b(?:dhai|adhai)\b|ढाई/g, '2.5')
+  .replace(TENS_RE, (_, tens, ones) => TENS[tens] + (ONES[ones] ?? 0))
+  .replace(ONES_RE, (_, word, half) => ONES[word] + (half ? 0.5 : 0))
+  .replace(/(\d+)\s+point\s+(\d+)/g, '$1.$2');
+
+/** "1.5 crore", "1 crore 35 lakh", "80 to 90 lakh", "१.५ करोड़" -> top of the stated budget, in lakh. */
 export function parseBudgetLakh(value) {
   const s = clean(value);
   if (!s) return null;
-  const text = s.toLowerCase().replace(/[,₹]/g, '').replace(/rs\.?|rupees?|inr/g, '');
-  const m = text.match(/(\d+(?:\.\d+)?)/);
-  if (!m) return null;
-  const n = Number(m[1]);
-  if (/crore|\bcr\b|\d\s*cr/.test(text)) return n * 100;
-  if (/lakh|lac|\bl\b|\d\s*l\b/.test(text)) return n;
-  if (n >= 100000) return n / 100000;   // plain rupees
-  if (n < 20) return n * 100;           // "1.5" said in crores
-  return n;                             // "90" said in lakh
+  const text = wordsToDigits(asciiDigits(s.normalize('NFC')).toLowerCase()
+    .replace(/[,₹]/g, '').replace(/\b(?:rs\.?|rupees?|inr)(?=\s|\d|$)/g, ' ')
+    .replace(/करोड़?/g, 'crore').replace(/लाख/g, 'lakh'));
+  const parts = [...text.matchAll(/(\d+(?:\.\d+)?)\s*(crores?|crs?|lakhs?|lacs?|l)?\b/g)]
+    .map((m) => ({ n: Number(m[1]), unit: m[2]?.[0] }));
+  if (!parts.length) return null;
+  const last = parts.at(-1), prev = parts.at(-2);
+  if (prev?.unit === 'c' && last.unit !== 'c') return prev.n * 100 + last.n; // 1 crore 20 lakh
+  if (last.unit === 'c') return last.n * 100;                                // 1 to 1.5 crore
+  if (last.unit === 'l') return last.n;                                      // 80 to 90 lakh
+  if (last.n >= 100000) return last.n / 100000;                              // plain rupees
+  return last.n < 20 ? last.n * 100 : last.n;                                // "1.5" means crore, "90" means lakh
 }
 
 export function parseBhk(value) {
   const s = clean(value);
   if (!s) return null;
-  const m = s.match(/\d/);
+  const m = asciiDigits(s).match(/\d/);
   if (m) return Number(m[0]);
-  const words = { one: 1, two: 2, three: 3, four: 4, five: 5 };
-  const w = s.toLowerCase().match(/one|two|three|four|five/);
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5, 'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'पाँच': 5 };
+  const w = s.toLowerCase().match(/\b(?:one|two|three|four|five)\b|एक|दो|तीन|चार|पांच|पाँच/);
   return w ? words[w[0]] : null;
 }
 
-/** "10 AM", "2:30 pm", "14:00" -> "HH:MM". */
+const DAY_PARTS = { morning: '10:00', 'सुबह': '10:00', afternoon: '14:00', 'दोपहर': '14:00', noon: '12:00', evening: '18:00', 'शाम': '18:00' };
+
+/** "10 AM", "2:30 pm", "14:00", "after 6", "evening" -> "HH:MM". */
 export function parseTime(value) {
   const s = clean(value);
   if (!s) return null;
-  const m = s.toLowerCase().match(/(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m|p\.?m)?/);
-  if (!m) return null;
+  const text = wordsToDigits(asciiDigits(s).toLowerCase());
+  const m = text.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m|p\.?m)?/);
+  if (!m) {
+    const word = Object.keys(DAY_PARTS).find((k) => text.includes(k));
+    return word ? DAY_PARTS[word] : null;
+  }
   let h = Number(m[1]);
   const min = Number(m[2] || 0);
-  if (m[3]?.startsWith('p') && h < 12) h += 12;
-  if (m[3]?.startsWith('a') && h === 12) h = 0;
+  const pm = m[3]?.startsWith('p') || /evening|afternoon|night|sha+m|शाम|दोपहर|रात/.test(text);
+  const am = m[3]?.startsWith('a') || /morning|subah|सुबह/.test(text);
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  if (!pm && !am && m[1].length === 1 && h >= 1 && h <= 7) h += 12; // "after 6" never means 6 AM
   if (h > 23 || min > 59) return null;
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
@@ -86,13 +118,14 @@ export function speakTime(hhmm) {
 }
 
 export function speakPrice(lakh) {
-  if (lakh >= 100) return `${Number((lakh / 100).toFixed(2))} crore rupees`;
-  return `${Number(lakh.toFixed(1))} lakh rupees`;
+  if (lakh < 100) return `${Number(lakh.toFixed(1))} lakh`;
+  const crore = Math.floor(lakh / 100), rest = Number((lakh - crore * 100).toFixed(1));
+  return rest ? `${crore} crore ${rest} lakh` : `${crore} crore`;
 }
 
 /** Returns E.164 or null. Ten-digit numbers are assumed Indian. */
 export function normalizePhone(value) {
-  const s = String(value ?? '').replace(/[\s()-]/g, '');
+  const s = String(value ?? '').replace(/[\s()-]/g, '').replace(/^0(?=[6-9]\d{9}$)/, '');
   if (/^[6-9]\d{9}$/.test(s)) return `+91${s}`;
   if (/^91[6-9]\d{9}$/.test(s)) return `+${s}`;
   return /^\+\d{10,15}$/.test(s) ? s : null;
@@ -104,6 +137,11 @@ export function isDialable(phone) {
   if (phone.startsWith('+91')) return /^\+91[6-9]\d{9}$/.test(phone);
   return /^\+[1-9]\d{9,14}$/.test(phone);
 }
+
+const CSV_ALIASES = {
+  phone_number: 'phone', mobile: 'phone', mobile_number: 'phone', contact_number: 'phone',
+  full_name: 'name', customer_name: 'name',
+};
 
 export function parseCsv(text) {
   const rows = [];
@@ -123,6 +161,9 @@ export function parseCsv(text) {
   if (cell || row.length) { row.push(cell); rows.push(row); }
   const [header, ...body] = rows.filter((r) => r.some((c) => c.trim()));
   if (!header) return [];
-  const keys = header.map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const keys = header.map((h) => {
+    const key = h.trim().toLowerCase().replace(/\s+/g, '_');
+    return CSV_ALIASES[key] ?? key;
+  });
   return body.map((r) => Object.fromEntries(keys.map((k, i) => [k, (r[i] ?? '').trim()])));
 }

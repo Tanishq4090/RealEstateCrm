@@ -6,7 +6,9 @@ Built for the Bolna Symphony Buildathon. All projects and sample leads are ficti
 
 ## What makes it different
 
-The agent is not tied to the campaign project. If a buyer called about Whitefield asks about Sarjapur, it searches live portfolio data mid-call, compares the options against what the buyer said, and books the visit. Prices and availability come from tools rather than the prompt, so a project added in the dashboard is available on the next call.
+The agent is not tied to the campaign project. Every search covers the full portfolio and returns the best cross-project suggestion with a computed reason, such as "Sarjapur Residences, 15 lakh less and 140 square feet larger". A buyer called about Whitefield can ask about Sarjapur, compare the two, and book a visit in one call.
+
+Live prices and availability come from tools, so a project added in the dashboard is available on the next call.
 
 ## How it works
 
@@ -14,13 +16,16 @@ The agent is not tied to the campaign project. If a buyer called about Whitefiel
 Dashboard ── launch ──> Bolna ── phone call ──> Buyer
     ^                     │
     │                     ├─ tools mid-call ──> search, details, slots, book, callback, update lead
-    └── SQLite <── server ┴─ webhook after call ──> transcript, summary, final lead status
+    └── SQLite <── server ┴─ webhook after call ──> transcript, summary, extraction, final lead status
 ```
 
-- `src/tools.js`: the six tools the agent calls. Booking is enforced by a database constraint, so one slot cannot go to two buyers.
-- `src/calls.js`: dialling, consent checks, webhook handling and lead classification.
-- `src/agent-config.js`: the agent prompt, voices and tool wiring.
-- `public/index.html`: the builder dashboard.
+| Path | Purpose |
+|---|---|
+| `src/tools.js` | The six tools the agent calls. A database constraint stops one slot going to two buyers. |
+| `src/calls.js` | Dialling guards, webhook handling and lead classification. |
+| `src/agent-config.js` | Agent prompt, voices, tool wiring and post-call extractions. |
+| `src/parse.js` | Turns spoken input into data: "1 crore 35 lakh", "after 6", "डेढ़ करोड़". |
+| `public/index.html` | The builder dashboard. |
 
 Node 22.13+ with no npm dependencies.
 
@@ -32,25 +37,33 @@ npm run simulate     # in a second terminal, replays a full sales call
 npm test
 ```
 
+Watch the dashboard during the simulation: a banner shows the live call, a booking alert appears, and the result lands in Call history and Appointments. The transcript is scripted and labelled as simulated. Rerunning it moves Rahul's visit to the next open slot.
+
+**Call** and **Launch campaign** stay disabled until Bolna is connected, and sample leads can never be dialled. Stop the server and run `npm run reset` to restore the sample data.
+
 ## Connect real calling
 
 1. Create a key at [platform.bolna.ai](https://platform.bolna.ai) and add wallet credit.
-2. `cp .env.example .env` (keep any `TOOL_TOKEN` already there), then set `BOLNA_API_KEY`.
+2. Add `BOLNA_API_KEY` and `DASHBOARD_PASSWORD` to `.env`. See `.env.example` for every option. `npm start` already created this file, so add to it rather than copying over it.
 3. Start the server with `npm start`, then expose it: `cloudflared tunnel --url http://localhost:3000`.
-4. Set `PUBLIC_URL` in `.env` to the tunnel URL, and set `DASHBOARD_PASSWORD`, since the tunnel is public.
-5. `npm run setup-agent`, then restart `npm start`.
+4. Set `PUBLIC_URL` in `.env` to the tunnel URL.
+5. Run `npm run setup-agent`, then restart `npm start`.
 6. In the dashboard, add your own number as a lead and press **Call**.
 
 If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. If Bolna rejects the voice settings, set `VOICE_PROFILE=default` and rerun.
 
 ## Safeguards
 
-- The agent says it is an AI in its first sentence.
-- Leads are dialled only with recorded consent. Opt-outs on a call go straight to the do-not-call list.
-- Calls are limited to 9 AM to 9 PM recipient time. Confirm this and sender registration against current TRAI rules before calling real prospects.
-- Bookings are confirmed to a buyer only after the reservation succeeds.
-- Sample leads use numbers that cannot exist and are refused by the dialler.
+- The agent says it is an AI on a recorded line in its first sentence.
+- Leads are dialled only with recorded consent, and the server rechecks each lead at the moment of dialling.
+- An opt-out goes straight to the do-not-call list and cancels that buyer's appointments. A post-call extraction catches any opt-out the live agent missed.
+- Campaigns skip anyone called in the last 24 hours or holding a booking.
+- A booking is confirmed to a buyer only after the reservation succeeds.
+- The server will not start with a public URL and no dashboard password.
+- Sample leads use numbers that cannot exist, and the dialler refuses them.
+- Calling hours are set to 9 AM to 9 PM recipient time through Bolna's calling guardrails, which the server relies on rather than enforcing itself. Confirm this and sender registration against current TRAI rules before calling real prospects.
 
-## Not built yet
+## Known limits
 
-Sign-up and multi-builder accounts, brochure ingestion, retry scheduling, and editing existing projects.
+- Hindi uses Bolna's automatic language switching. It is configured but not yet proven on a live call.
+- Not built yet: sign-up and multi-builder accounts, brochure ingestion, retry scheduling, and editing existing projects.

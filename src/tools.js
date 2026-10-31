@@ -5,11 +5,14 @@ import { addDays, clean, parseBhk, parseBudgetLakh, parseDate, parseTime, speakD
 
 export const SLOTS = ['10:00', '11:30', '14:00', '16:00'];
 const STATUSES = new Set(['hot', 'warm', 'cold', 'not_interested', 'callback_requested']);
+const AFTER_SAVE = 'Call update_lead before saying goodbye.';
 
 const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 function matchesLocation(project, location) {
-  const q = normalize(location).replace(/\b(road|bengaluru|bangalore|area|side|near)\b/g, '').trim();
+  const raw = normalize(location);
+  if (!raw) return false; // Hindi or Kannada script strips to nothing, and nothing must not match everything
+  const q = raw.replace(/\b(road|bengaluru|bangalore|area|side|near)\b/g, '').trim();
   if (!q) return true;
   return [project.location, project.name, ...project.areas].some((text) => {
     const t = normalize(text);
@@ -17,26 +20,41 @@ function matchesLocation(project, location) {
   });
 }
 
+/** Returns null on a tie, so a misheard name cannot book the wrong site. */
 function resolveProject(db, name) {
   const q = clean(name);
   if (!q) return null;
   const words = normalize(q).split(' ').filter((w) => w.length > 2);
-  let best = null, bestScore = 0;
+  let best = null, bestScore = 0, tied = false;
   for (const p of allProjects(db)) {
     const hay = normalize(`${p.name} ${p.location} ${p.areas.join(' ')}`);
     const score = words.filter((w) => hay.includes(w) || hay.includes(w.replace(/s$/, ''))).length;
-    if (score > bestScore) { best = p; bestScore = score; }
+    if (score > bestScore) { best = p; bestScore = score; tied = false; }
+    else if (score && score === bestScore) tied = true;
   }
-  return best;
+  return tied ? null : best;
 }
 
-const unitLine = (c) => ({ bhk: `${c.bhk} BHK`, size: `${c.size_sqft} square feet`, starting_price: speakPrice(c.price_lakh), availability: c.units_left > 0 ? 'available' : 'sold out' });
+const unitLine = (c) => ({
+  bhk: `${c.bhk} BHK`, size: `${c.size_sqft} square feet`, starting_price: speakPrice(c.price_lakh),
+  availability: c.units_left > 0 ? 'available' : 'sold out',
+});
 
 function brief(p, configs = p.configs) {
   return { project: p.name, location: p.location, possession: p.possession, units: configs.map(unitLine) };
 }
 
 const lack = (msg) => ({ ok: false, message: msg });
+const cheapest = (p, configs) => ({ p, cfg: configs.reduce((a, b) => (b.price_lakh < a.price_lakh ? b : a)) });
+
+/** What the alternative offers over the base option, in words the agent can say. */
+function perks(base, alt) {
+  const out = [];
+  if (alt.cfg.price_lakh < base.cfg.price_lakh) out.push(`${speakPrice(base.cfg.price_lakh - alt.cfg.price_lakh)} less`);
+  if (alt.cfg.size_sqft > base.cfg.size_sqft) out.push(`${alt.cfg.size_sqft - base.cfg.size_sqft} square feet larger`);
+  if (/ready/i.test(alt.p.possession) && !/ready/i.test(base.p.possession)) out.push('ready to move');
+  return out.join(', ');
+}
 
 export function searchProjects(db, { lead_id, location, bhk, budget }) {
   const loc = clean(location), wantBhk = parseBhk(bhk), budgetLakh = parseBudgetLakh(budget);
@@ -45,20 +63,36 @@ export function searchProjects(db, { lead_id, location, bhk, budget }) {
     db.prepare(`UPDATE leads SET pref_location = COALESCE(?, pref_location), pref_bhk = COALESCE(?, pref_bhk),
       budget_lakh = COALESCE(?, budget_lakh), updated_at = datetime('now') WHERE id = ?`).run(loc, wantBhk, budgetLakh, Number(clean(lead_id)));
   }
-  const matches = [], alternatives = [];
+
+  const matches = [], alternatives = [], pool = [];
   for (const p of allProjects(db)) {
     const open = p.configs.filter((c) => c.units_left > 0);
     const byBhk = wantBhk ? open.filter((c) => c.bhk === wantBhk) : open;
     const fits = budgetLakh ? byBhk.filter((c) => c.price_lakh <= budgetLakh) : byBhk;
     const inArea = !loc || matchesLocation(p, loc);
-    if (inArea && fits.length) { matches.push(brief(p, fits)); continue; }
+    if (inArea && fits.length) { matches.push(brief(p, fits)); pool.push(cheapest(p, fits)); continue; }
     const why = [];
     if (!inArea) why.push(`located in ${p.location}, not ${loc}`);
-    if (!byBhk.length) why.push(`no ${wantBhk} BHK available`);
+    if (!byBhk.length) why.push(wantBhk ? `no ${wantBhk} BHK available` : 'sold out');
     else if (!fits.length) why.push(`above budget, starts at ${speakPrice(Math.min(...byBhk.map((c) => c.price_lakh)))}`);
-    alternatives.push({ ...brief(p, byBhk.length ? byBhk : open), why_not_exact: why.join('; ') });
+    const shown = byBhk.length ? byBhk : open;
+    alternatives.push({ ...brief(p, shown), why_not_exact: why.join('; ') });
+    if (shown.length) pool.push(cheapest(p, shown));
   }
-  return { ok: true, match_count: matches.length, matches, alternatives };
+
+  const priceOf = (name) => pool.find((x) => x.p.name === name)?.cfg.price_lakh ?? Infinity;
+  const noBhk = (a) => a.why_not_exact.includes('BHK available');
+  alternatives.sort((a, b) => noBhk(a) - noBhk(b) || priceOf(a.project) - priceOf(b.project));
+
+  // This is what turns the agent from a single-project caller into a portfolio advisor.
+  const base = pool.find((x) => x.p.name === matches[0]?.project);
+  const other = base && pool
+    .filter((x) => x !== base && x.cfg.bhk === base.cfg.bhk && (!budgetLakh || x.cfg.price_lakh <= budgetLakh))
+    .map((x) => ({ ...x, why: perks(base, x) })).find((x) => x.why);
+  const also_consider = other
+    ? `${other.p.name} in ${other.p.location}: ${other.cfg.bhk} BHK from ${speakPrice(other.cfg.price_lakh)}, ${other.why}.`
+    : null;
+  return { ok: true, match_count: matches.length, matches, alternatives, also_consider };
 }
 
 export function getProjectDetails(db, { project_names }) {
@@ -109,10 +143,12 @@ export function checkSlots(db, { project, date, time }, now = new Date()) {
 
 const getLead = (db, id) => db.prepare('SELECT * FROM leads WHERE id = ?').get(Number(clean(id)));
 
-function nextRep(db) {
+/** Least-loaded consultant who is free at that time. Null means nobody is. */
+function nextRep(db, date, time) {
   return db.prepare(`SELECT r.id, r.name FROM reps r
     LEFT JOIN appointments a ON a.rep_id = r.id AND a.status = 'scheduled'
-    GROUP BY r.id ORDER BY COUNT(a.id), r.id LIMIT 1`).get();
+    WHERE r.id NOT IN (SELECT rep_id FROM appointments WHERE status = 'scheduled' AND date = ? AND time = ? AND rep_id IS NOT NULL)
+    GROUP BY r.id ORDER BY COUNT(a.id), r.id LIMIT 1`).get(date, time);
 }
 
 export function bookVisit(db, { lead_id, project, date, time }, now = new Date()) {
@@ -124,19 +160,23 @@ export function bookVisit(db, { lead_id, project, date, time }, now = new Date()
   if (day <= todayIST(now)) return lack('Visits can be booked from tomorrow onwards.');
   if (!SLOTS.includes(slot)) return lack(`Visit times are ${SLOTS.map(speakTime).join(', ')}.`);
 
+  const confirmed = `Visit to ${p.name} is confirmed for ${speakDate(day)} at ${speakTime(slot)}.`;
   const existing = db.prepare(`SELECT * FROM appointments WHERE type = 'visit' AND status = 'scheduled' AND lead_id = ? AND project_id = ?`).get(lead.id, p.id);
   if (existing?.date === day && existing.time === slot) {
-    return { ok: true, confirmed: true, already_booked: true, message: `Visit to ${p.name} is confirmed for ${speakDate(day)} at ${speakTime(slot)}.` };
+    return { ok: true, confirmed: true, already_booked: true, next_step: AFTER_SAVE, message: confirmed };
   }
+  const clash = db.prepare(`SELECT p.name FROM appointments a JOIN projects p ON p.id = a.project_id
+    WHERE a.type = 'visit' AND a.status = 'scheduled' AND a.lead_id = ? AND a.date = ? AND a.time = ? AND a.project_id != ?`).get(lead.id, day, slot, p.id);
+  if (clash) return { ok: false, confirmed: false, message: `They already have a visit to ${clash.name} at that time. Offer a different time.` };
 
-  const rep = nextRep(db);
+  const rep = nextRep(db, day, slot);
   db.exec('BEGIN IMMEDIATE');
   try {
     if (existing) db.prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?").run(existing.id);
     db.prepare(`INSERT INTO appointments (type, lead_id, project_id, date, time, rep_id, notes) VALUES ('visit', ?, ?, ?, ?, ?, ?)`)
       .run(lead.id, p.id, day, slot, rep?.id ?? null, existing ? 'Rescheduled by customer on call' : null);
     db.prepare(`UPDATE leads SET interested_project = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?`)
-      .run(p.name, `Site visit ${day} ${slot}`, lead.id);
+      .run(p.name, `Site visit ${speakDate(day)}, ${speakTime(slot)}`, lead.id);
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -144,7 +184,7 @@ export function bookVisit(db, { lead_id, project, date, time }, now = new Date()
     return { ok: false, confirmed: false, message: 'That slot was just taken. Do not confirm it.',
       open_times: openSlots(db, p.id, day).map(speakTime), other_days: nearbyOptions(db, p.id, day) };
   }
-  return { ok: true, confirmed: true, next_step: 'Call update_lead before saying goodbye.', message: `Visit to ${p.name} is confirmed for ${speakDate(day)} at ${speakTime(slot)}.`,
+  return { ok: true, confirmed: true, next_step: AFTER_SAVE, message: confirmed,
     rescheduled: Boolean(existing), location: p.location, sales_contact: rep?.name };
 }
 
@@ -153,15 +193,24 @@ export function scheduleCallback(db, { lead_id, date, time, topic }, now = new D
   if (!lead) return lack('Could not find this customer record.');
   const day = parseDate(date), slot = parseTime(time);
   if (!day || !slot) return lack('Need a YYYY-MM-DD date and a time.');
-  if (day < todayIST(now)) return lack('That date has passed. Ask for a later one.');
-  const dup = db.prepare(`SELECT id FROM appointments WHERE type = 'callback' AND status = 'scheduled' AND lead_id = ? AND date = ? AND time = ?`).get(lead.id, day, slot);
-  const rep = nextRep(db);
+  const today = todayIST(now);
+  const clock = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+  if (day < today || (day === today && slot <= clock)) return lack('That time has passed. Ask for a later one.');
+  if (slot < '09:00' || slot >= '21:00') return lack('Consultants call between 9 AM and 9 PM. Ask for a time in those hours.');
+
+  const dup = db.prepare(`SELECT r.id, r.name FROM appointments a LEFT JOIN reps r ON r.id = a.rep_id
+    WHERE a.type = 'callback' AND a.status = 'scheduled' AND a.lead_id = ? AND a.date = ? AND a.time = ?`).get(lead.id, day, slot);
+  const rep = dup ?? nextRep(db, day, slot);
   if (!dup) {
+    // A new time replaces the old one, or the buyer gets two calls.
+    db.prepare("UPDATE appointments SET status = 'cancelled' WHERE type = 'callback' AND status = 'scheduled' AND lead_id = ?").run(lead.id);
     db.prepare(`INSERT INTO appointments (type, lead_id, date, time, rep_id, notes) VALUES ('callback', ?, ?, ?, ?, ?)`)
       .run(lead.id, day, slot, rep?.id ?? null, clean(topic));
-    db.prepare(`UPDATE leads SET next_action = ?, updated_at = datetime('now') WHERE id = ?`).run(`Human callback ${day} ${slot}`, lead.id);
+    db.prepare(`UPDATE leads SET next_action = ?, updated_at = datetime('now') WHERE id = ?`)
+      .run(`Human callback ${speakDate(day)}, ${speakTime(slot)}`, lead.id);
   }
-  return { ok: true, confirmed: true, next_step: 'Call update_lead before saying goodbye.', message: `A property consultant${rep ? `, ${rep.name},` : ''} will call on ${speakDate(day)} at ${speakTime(slot)}.` };
+  const who = rep?.name ? `A property consultant, ${rep.name},` : 'A property consultant';
+  return { ok: true, confirmed: true, next_step: AFTER_SAVE, message: `${who} will call on ${speakDate(day)} at ${speakTime(slot)}.` };
 }
 
 export function updateLead(db, args) {
@@ -169,16 +218,25 @@ export function updateLead(db, args) {
   if (!lead) return lack('Customer record not found. Carry on with the conversation.');
   const status = clean(args.status)?.toLowerCase().replace(/[\s-]+/g, '_');
   const optOut = ['true', 'yes'].includes(String(clean(args.do_not_call)).toLowerCase());
+  const notes = clean(args.notes);
   const next = {
     pref_location: clean(args.location) ?? lead.pref_location, pref_bhk: parseBhk(args.bhk) ?? lead.pref_bhk,
     budget_lakh: parseBudgetLakh(args.budget) ?? lead.budget_lakh, purpose: clean(args.purpose) ?? lead.purpose,
     timeline: clean(args.timeline) ?? lead.timeline, interested_project: clean(args.interested_project) ?? lead.interested_project,
     status: STATUSES.has(status) ? status : lead.status, do_not_call: optOut || status === 'not_interested' ? 1 : lead.do_not_call,
+    next_action: notes && !lead.next_action?.includes(notes) ? [lead.next_action, notes].filter(Boolean).join('; ') : lead.next_action,
   };
   if (optOut) next.status = 'not_interested';
-  db.prepare(`UPDATE leads SET pref_location = ?, pref_bhk = ?, budget_lakh = ?, purpose = ?, timeline = ?, interested_project = ?, status = ?, do_not_call = ?, updated_at = datetime('now') WHERE id = ?`)
-    .run(next.pref_location, next.pref_bhk, next.budget_lakh, next.purpose, next.timeline, next.interested_project, next.status, next.do_not_call, lead.id);
-  return { ok: true, saved: true };
+  if (next.do_not_call) {
+    next.next_action = 'None';
+    // Opting out must also stop the consultant's callback and free the visit slot.
+    db.prepare("UPDATE appointments SET status = 'cancelled' WHERE lead_id = ? AND status = 'scheduled'").run(lead.id);
+  }
+  db.prepare(`UPDATE leads SET pref_location = ?, pref_bhk = ?, budget_lakh = ?, purpose = ?, timeline = ?, interested_project = ?,
+      status = ?, do_not_call = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(next.pref_location, next.pref_bhk, next.budget_lakh, next.purpose, next.timeline, next.interested_project,
+      next.status, next.do_not_call, next.next_action, lead.id);
+  return { ok: true, saved: true, next_step: 'Restate any booking in one sentence, thank them and say goodbye.' };
 }
 
 export const TOOL_HANDLERS = {

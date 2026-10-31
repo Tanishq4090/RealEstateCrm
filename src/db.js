@@ -44,7 +44,7 @@ const PROJECTS = [
     amenities: ['Clubhouse', 'Swimming pool', 'Children play area', 'Gym'], possession: 'December 2027, under construction',
     landmarks: ['ITPL', 'Hoodi metro station', 'Phoenix Marketcity'],
     payment_plan: '10 percent on booking, construction-linked after that',
-    faqs: [{ q: 'Is it RERA registered?', a: 'Registration details are shared by the sales team during the site visit.' }, { q: 'Is car parking included?', a: 'One covered car park is included with every apartment.' }] },
+    faqs: [{ q: 'Is it RERA registered?', a: 'The consultant will share the registration number.' }, { q: 'Is car parking included?', a: 'One covered car park is included with every apartment.' }] },
   { name: 'Sarjapur Residences', location: 'Sarjapur Road, Bengaluru', areas: ['sarjapur', 'sarjapura', 'bellandur', 'dommasandra'],
     description: 'Larger low-density homes for families who want more space.',
     configs: [{ bhk: 3, size_sqft: 1720, price_lakh: 120, units_left: 14 }, { bhk: 4, size_sqft: 2400, price_lakh: 185, units_left: 5 }],
@@ -103,10 +103,14 @@ function seed(db) {
     }
   }
 
+  const whitefield = db.prepare("SELECT id FROM projects WHERE name = 'Whitefield Heights'").get().id;
+  const { lastInsertRowid: campaign } = db.prepare("INSERT INTO campaigns (name, project_id, status) VALUES ('Sample: enquiry follow-up', ?, 'done')").run(whitefield);
+  db.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, state) SELECT ?, id, 'dialled' FROM leads WHERE is_sample = 1 AND status != 'new'").run(campaign);
+  db.prepare('UPDATE calls SET campaign_id = ? WHERE is_sample = 1').run(campaign);
+
   // Taking the next weekend's 10 AM slots makes the "slot unavailable" path real.
   const today = todayIST();
   const saturday = nextWeekday(today, 6);
-  const whitefield = db.prepare("SELECT id FROM projects WHERE name = 'Whitefield Heights'").get().id;
   const priya = db.prepare("SELECT id FROM leads WHERE phone = '+910000000002'").get().id;
   const meera = db.prepare("SELECT id FROM leads WHERE phone = '+910000000004'").get().id;
   const insertAppt = db.prepare(`INSERT INTO appointments (type, lead_id, project_id, date, time, rep_id, notes, is_sample) VALUES (?, ?, ?, ?, ?, ?, ?, 1)`);
@@ -119,7 +123,8 @@ export function clearSamples(db) {
   db.exec(`DELETE FROM appointments WHERE is_sample = 1 OR lead_id IN (SELECT id FROM leads WHERE is_sample = 1);
     DELETE FROM calls WHERE is_sample = 1 OR lead_id IN (SELECT id FROM leads WHERE is_sample = 1);
     DELETE FROM campaign_leads WHERE lead_id IN (SELECT id FROM leads WHERE is_sample = 1);
-    DELETE FROM leads WHERE is_sample = 1;`);
+    DELETE FROM leads WHERE is_sample = 1;
+    DELETE FROM campaigns WHERE id NOT IN (SELECT campaign_id FROM campaign_leads);`);
 }
 
 export function getProject(row) {

@@ -6,8 +6,8 @@
 <title>PropReach AI</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23185c4e'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
 <style>
-:root{--bg:#f6f5f1;--panel:#fff;--ink:#1c2321;--muted:#66706c;--line:#e4e2db;--brand:#185c4e;--brand-soft:#e2efe9;
---hot:#b5381f;--hot-soft:#fbe7e1;--warm:#9a6200;--warm-soft:#faeed4;--cold:#3a6188;--cold-soft:#e3edf6;--grey-soft:#ececea;--violet:#5d4a9c;--violet-soft:#ebe7f6}
+:root{--bg:#f6f5f1;--panel:#fff;--ink:#1c2321;--muted:#66706c;--line:#e4e2db;--field:#8c8a82;--brand:#185c4e;--brand-soft:#e2efe9;
+--hot:#b5381f;--hot-soft:#fbe7e1;--warm:#8f5b00;--warm-soft:#faeed4;--cold:#3a6188;--cold-soft:#e3edf6;--grey-soft:#ececea;--violet:#5d4a9c;--violet-soft:#ebe7f6}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -16,47 +16,90 @@ nav{background:var(--brand);color:#fff;padding:20px 12px;position:sticky;top:0;h
 .logo{font-weight:700;font-size:18px;padding:0 12px 20px;letter-spacing:-.01em}.logo span{opacity:.7;font-weight:500}
 nav a{display:block;padding:9px 12px;border-radius:8px;color:#dcebe5;text-decoration:none;cursor:pointer;margin-bottom:2px}
 nav a:hover{background:#ffffff1a}nav a.on{background:#fff;color:var(--brand);font-weight:600}
-.status{margin-top:auto;font-size:13px;padding:12px;color:#dcebe5}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#f0b64a}.dot.on{background:#6fe0a8}
+nav a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.status{margin-top:auto;font-size:13px;padding:12px;color:#dcebe5;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#f0b64a}.dot.on{background:#6fe0a8}
 main{padding:28px 32px 60px;max-width:1240px;width:100%}
 h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}h2{font-size:16px;margin:0 0 12px}.sub{color:var(--muted);margin:0 0 22px}
+.live{display:block;background:var(--brand);color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;margin-bottom:18px;font-weight:600}
+.live[hidden]{display:none}.live:hover{background:#134b40}.live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#6fe0a8;margin-right:9px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.live i{animation:none}}
 .notice{background:var(--warm-soft);border:1px solid #efdcae;padding:10px 14px;border-radius:10px;margin-bottom:18px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}.stat b{display:block;font-size:28px;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:13px}
-.funnel div.row{display:grid;grid-template-columns:130px 1fr 40px;gap:10px;align-items:center;margin:8px 0;font-size:14px}.bar{background:var(--grey-soft);border-radius:5px;height:14px;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:5px;min-width:2px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-size:28px;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:13px}
+.funnel .row{display:grid;grid-template-columns:120px 1fr 30px 42px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.funnel .pct{color:var(--muted);font-size:13px;text-align:right}
+.bar{background:var(--grey-soft);border-radius:5px;height:14px;overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:5px;min-width:2px}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 0}
 .tablewrap{overflow-x:auto;margin:-4px -18px -18px}table{width:100%;border-collapse:collapse;min-width:640px}
 th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#faf9f5}
-.small{font-size:13px;color:var(--muted)}.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--grey-soft);color:#4b5350}
-.hot{background:var(--hot-soft);color:var(--hot)}.warm{background:var(--warm-soft);color:var(--warm)}.cold{background:var(--cold-soft);color:var(--cold)}.callback_requested{background:var(--violet-soft);color:var(--violet)}.good{background:var(--brand-soft);color:var(--brand)}
-button{background:var(--panel);border:1px solid var(--line);padding:7px 13px;border-radius:8px;cursor:pointer}button:hover{border-color:#bdbab0}button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}button:disabled{opacity:.5;cursor:not-allowed}
-input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}label input,label select,label textarea{margin-top:3px;color:var(--ink)}
+td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#faf9f5}tr.fresh td{background:var(--brand-soft)}
+.small{font-size:13px;color:var(--muted)}.nowrap{white-space:nowrap}.clip{max-width:320px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--grey-soft);color:#4b5350}
+.hot{background:var(--hot-soft);color:var(--hot)}.warm{background:var(--warm-soft);color:var(--warm)}.cold{background:var(--cold-soft);color:var(--cold)}
+.callback_requested{background:var(--violet-soft);color:var(--violet)}.good{background:var(--brand-soft);color:var(--brand)}
+button{background:var(--panel);border:1px solid var(--field);padding:7px 13px;border-radius:8px;cursor:pointer}button:hover{border-color:var(--ink)}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}button:disabled{opacity:.5;cursor:not-allowed}
+.rowlink{all:unset;font-weight:600;cursor:pointer}.rowlink:hover{text-decoration:underline}.rowlink:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--field);border-radius:8px;background:#fff}
+input[type=checkbox]{width:auto;margin:0}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}label input,label select,label textarea{margin-top:3px;color:var(--ink)}
+label.check{display:flex;gap:8px;align-items:center;color:inherit;margin:4px 0;font-size:15px}label.check input{margin:0}
 :focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}.toolbar input,.toolbar select{width:auto;flex:0 1 240px}.spacer{flex:1}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.projects{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}.projects .card{margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.projects{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:14px}.projects .card{margin:0}
 .chips span{display:inline-block;background:var(--grey-soft);border-radius:6px;padding:1px 8px;font-size:12px;margin:0 4px 4px 0}
 .units{width:100%;min-width:0;margin:8px 0}.units td,.units th{padding:5px 0;border:0}
-dialog{border:0;border-radius:14px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 48px);color:var(--ink)}dialog::backdrop{background:#0006}.dlg{padding:22px}.dlg header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.picks{max-height:170px;overflow:auto;margin-bottom:12px}
+dialog{border:0;border-radius:14px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 48px);color:var(--ink)}dialog::backdrop{background:#0006}
+.dlg{padding:22px}.dlg header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}.dlg h2.title{font-size:20px;margin:0}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}.kv div span{display:block;font-size:12px;color:var(--muted)}
-.transcript{background:var(--bg);padding:12px;border-radius:9px;max-height:300px;overflow:auto;font-size:14px}.transcript p{margin:0 0 8px}.transcript b{color:var(--brand)}.transcript .u b{color:var(--hot)}
+audio{width:100%;margin:6px 0 12px}
+.transcript{background:var(--bg);padding:12px;border-radius:9px;max-height:300px;overflow:auto;font-size:14px}.transcript p{margin:0 0 8px}
+.transcript b{color:var(--brand)}.transcript .u b{color:var(--hot)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:9px;z-index:50;max-width:calc(100vw - 32px)}
 .empty{color:var(--muted);text-align:center;padding:30px 10px}
-@media (max-width:760px){.app{display:block}nav{position:static;height:auto;padding:12px 8px;flex-direction:row;overflow-x:auto;align-items:center;gap:2px}.logo{padding:0 8px;white-space:nowrap}.status{display:none}nav a{white-space:nowrap;margin:0}main{padding:18px 16px 50px}.grid2{grid-template-columns:1fr}.funnel div.row{grid-template-columns:100px 1fr 34px}}
+@media (max-width:760px){.app{display:block}nav{position:static;height:auto;padding:12px 8px;flex-direction:row;overflow-x:auto;align-items:center;gap:2px}
+.logo{padding:0 8px;white-space:nowrap}.status{margin:0 0 0 8px;padding:0 8px}nav a{white-space:nowrap;margin:0}main{padding:18px 16px 50px}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.funnel .row{grid-template-columns:96px 1fr 28px 38px}}
 </style>
 </head>
 <body>
 <div class="app">
-  <nav><div class="logo">PropReach <span>AI</span></div><div id="links" style="display:contents"></div><div class="status" id="status"></div></nav>
-  <main id="view"></main>
+  <nav aria-label="Main"><div class="logo">PropReach <span>AI</span></div><div id="links" style="display:contents"></div><div class="status" id="status"></div></nav>
+  <main><a class="live" id="live" href="#calls" hidden></a><div id="view"></div></main>
 </div>
-<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<dialog id="dlg" aria-labelledby="dlgTitle"><div class="dlg" id="dlgBody"></div></dialog>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : '');
+const noop = () => {};
+
 const TABS = { overview: 'Overview', leads: 'Leads', campaigns: 'Campaigns', calls: 'Call history', appointments: 'Appointments', projects: 'Projects' };
-const LABEL = { new: 'New', hot: 'Hot', warm: 'Warm', cold: 'Cold', not_interested: 'Not interested', callback_requested: 'Callback', unreachable: 'Unreachable', unclassified: 'Needs review' };
-let tab = location.hash.slice(1) in TABS ? location.hash.slice(1) : 'overview';
-let state = { search: '', filter: '', selected: new Set() };
+const LABEL = {
+  new: 'New', hot: 'Hot', warm: 'Warm', cold: 'Cold', not_interested: 'Not interested',
+  callback_requested: 'Callback', unreachable: 'Unreachable', unclassified: 'Needs review',
+};
+const RESULT = {
+  scheduled: 'Scheduled', queued: 'Queued', initiated: 'Dialling', ringing: 'Ringing', 'in-progress': 'On call',
+  'call-disconnected': 'Wrapping up', completed: 'No conversation', 'no-answer': 'No answer', busy: 'Busy',
+  failed: 'Failed', error: 'Failed', canceled: 'Cancelled', stopped: 'Stopped', 'balance-low': 'Out of credit',
+};
+const CAMPAIGN_STATUS = { draft: 'Draft', running: 'Calling', done: 'Finished', interrupted: 'Interrupted' };
+const ACTIVE_WINDOW_MS = 10 * 60 * 1000;
+
+const tabFromHash = () => { const h = location.hash.slice(1); return Object.hasOwn(TABS, h) ? h : 'overview'; };
+let tab = tabFromHash();
+const state = {
+  search: '', filter: '', selected: new Set(), cName: '', cProject: '', calls: [],
+  activeLeads: new Set(), seenAppts: null, freshAppts: new Set(),
+};
 let meta = {};
 
 async function get(path) {
@@ -70,18 +113,34 @@ async function post(path, body, raw) {
   if (!r.ok) throw new Error(out.error || r.statusText);
   return out;
 }
-function toast(msg) {
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
-  document.body.append(t); setTimeout(() => t.remove(), 3500);
+function toast(msg, ms = 3500) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  // A modal dialog sits in the top layer, so a toast on <body> would be hidden behind it.
+  ($('#dlg').open ? $('#dlg') : document.body).append(t);
+  setTimeout(() => t.remove(), ms);
 }
 const act = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message); } };
+/** Runs an action with its button disabled, so a double-click cannot repeat it. */
+async function once(button, fn) {
+  button.disabled = true;
+  try { return await fn(); } finally { button.disabled = false; }
+}
+
 const badge = (s) => `<span class="badge ${esc(s)}">${esc(LABEL[s] ?? s)}</span>`;
-const price = (l) => l == null ? '–' : l >= 100 ? `₹${+(l / 100).toFixed(2)} Cr` : `₹${+l.toFixed(1)} L`;
-const hhmm = (t) => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
-const day = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-const dur = (s) => s ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : '–';
-const when = (s) => s ? new Date(s.replace(' ', 'T') + 'Z').toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '–';
+const price = (l) => (l == null ? '–' : l >= 100 ? `₹${+(l / 100).toFixed(2)} Cr` : `₹${+l.toFixed(1)} L`);
+const hhmm = (t) => {
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const day = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+const dur = (s) => (s ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : '–');
+const utc = (s) => new Date(`${s.replace(' ', 'T')}Z`);
+const when = (s) => (s ? utc(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '–');
+const nowIST = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 16);
 const need = (l) => [l.pref_bhk && `${l.pref_bhk} BHK`, l.pref_location, l.budget_lakh && price(l.budget_lakh)].filter(Boolean).join(' · ') || '–';
+const isActive = (c) => !c.ended_at && Date.now() - utc(c.created_at) < ACTIVE_WINDOW_MS;
+const resultOf = (c) => (c.connected ? 'Connected' : isActive(c) ? RESULT[c.status] ?? 'On call' : RESULT[c.status] ?? c.status);
 
 function transcriptHtml(text) {
   if (!text) return '<p class="small">No transcript for this call.</p>';
@@ -93,111 +152,314 @@ function transcriptHtml(text) {
   }).join('')}</div>`;
 }
 
+function recordingHtml(url) {
+  const src = esc(safeUrl(url));
+  if (!src) return '';
+  return `<audio controls preload="none" src="${src}"></audio>
+    <p class="small"><a href="${src}" target="_blank" rel="noopener noreferrer">Open recording</a></p>`;
+}
+
 const views = {
   async overview() {
-    const o = await get('/api/overview');
-    const steps = [['Leads', o.leads], ['Calls attempted', o.attempted], ['Connected', o.connected], ['Interested', o.interested], ['Hot leads', o.hot], ['Booked a visit', o.visitLeads]];
-    const top = Math.max(...steps.map((s) => s[1]), 1);
+    const o = meta;
+    const appts = await get('/api/appointments');
+    const steps = [
+      ['Leads', o.leads], ['Called', o.attemptedLeads], ['Reached', o.connectedLeads],
+      ['Interested', o.interested], ['Qualified', o.qualified], ['Hot', o.hot], ['Booked a visit', o.visitLeads],
+    ];
+    const tiles = [
+      ['Leads uploaded', o.leads], ['Calls attempted', o.attempted], ['Calls connected', o.connected], ['Interested', o.interested],
+      ['Qualified', o.qualified], ['Hot leads', o.hot], ['Site visits booked', o.visits], ['Human callbacks', o.callbacks],
+    ];
     const order = ['hot', 'warm', 'callback_requested', 'cold', 'not_interested', 'unreachable', 'unclassified', 'new'];
+    const now = nowIST();
+    const next = appts.filter((a) => a.status === 'scheduled' && `${a.date} ${a.time}` >= now).slice(0, 4);
+    const statuses = order.filter((s) => o.byStatus[s]);
     return `<h1>${esc(o.company.name)}</h1><p class="sub">How your AI sales executive is converting leads.</p>
-    ${o.hasSamples ? `<div class="notice"><span>Includes fictional sample data for the demo.</span><button data-clear>Clear sample data</button></div>` : ''}
-    <div class="stats">${[['Leads uploaded', o.leads], ['Calls attempted', o.attempted], ['Connected', o.connected], ['Qualified, hot', o.hot], ['Site visits booked', o.visits], ['Human callbacks', o.callbacks]]
-      .map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
-    <div class="grid2"><div class="card funnel"><h2>Conversion funnel</h2>${steps.map(([k, v]) => `<div class="row"><span>${k}</span><div class="bar"><i style="width:${v / top * 100}%"></i></div><b>${v}</b></div>`).join('')}</div>
-    <div class="card"><h2>Lead status</h2>${order.filter((s) => o.byStatus[s]).map((s) => `<div style="display:flex;justify-content:space-between;padding:5px 0">${badge(s)}<b>${o.byStatus[s]}</b></div>`).join('')}</div></div>`;
+      ${o.hasSamples ? '<div class="notice"><span>Includes fictional sample data for the demo.</span><button data-clear>Clear sample data</button></div>' : ''}
+      <div class="stats">${tiles.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+      <div class="grid2">
+        <div class="card funnel"><h2>Lead funnel</h2>${steps.map(([k, v]) => `<div class="row"><span>${k}</span>
+          <div class="bar"><i style="width:${o.leads ? (v / o.leads) * 100 : 0}%"></i></div><b>${v}</b>
+          <span class="pct">${o.leads ? Math.round((v / o.leads) * 100) : 0}%</span></div>`).join('')}</div>
+        <div>
+          <div class="card"><h2>Coming up</h2>${next.length ? next.map((a) => `<div class="spread"><span><b>${esc(a.lead)}</b>
+            <span class="small">${esc(a.project ?? 'Human callback')}</span></span>
+            <span class="small nowrap">${day(a.date)}, ${hhmm(a.time)}</span></div>`).join('') : '<p class="small">Nothing scheduled.</p>'}</div>
+          <div class="card"><h2>Lead status</h2>${statuses.length
+            ? statuses.map((s) => `<div class="spread">${badge(s)}<b>${o.byStatus[s]}</b></div>`).join('')
+            : '<p class="small">No leads yet. Add some under Leads.</p>'}
+            ${o.hotBudgetLakh ? `<p class="small" style="margin:10px 0 0">Stated budget of hot leads: ${price(o.hotBudgetLakh)}</p>` : ''}</div>
+        </div>
+      </div>`;
   },
 
   async leads() {
     const all = await get('/api/leads');
     const q = state.search.toLowerCase();
-    const rows = all.filter((l) => (!state.filter || l.status === state.filter) && (!q || `${l.name} ${l.phone} ${l.pref_location ?? ''} ${l.interested_project ?? ''}`.toLowerCase().includes(q)));
+    const haystack = (l) => `${l.name} ${l.phone} ${l.enquiry} ${l.pref_location ?? ''} ${l.interested_project ?? ''}`.toLowerCase();
+    const rows = all.filter((l) => (!state.filter || l.status === state.filter) && (!q || haystack(l).includes(q)));
+    const callCell = (l) => {
+      const onCall = state.activeLeads.has(l.id);
+      const blocked = l.dial_blocker ?? (meta.calling ? null : 'Connect Bolna to call');
+      return `<td><button data-call="${l.id}" ${blocked || onCall ? 'disabled' : ''}>${onCall ? 'On call' : 'Call'}</button>
+        ${blocked ? `<div class="small">${esc(blocked)}</div>` : ''}</td>`;
+    };
     return `<h1>Leads</h1><p class="sub">${all.length} prospects. Only leads with recorded consent can be called.</p>
-    <div class="toolbar"><input id="search" type="search" placeholder="Search name, phone, area" aria-label="Search leads" value="${esc(state.search)}">
-    <select id="filter" aria-label="Filter by status"><option value="">All statuses</option>${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${state.filter === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-    <span class="spacer"></span><button data-addlead>Add lead</button><button data-upload>Upload CSV</button></div>
-    <div class="card"><div class="tablewrap">${rows.length ? `<table><thead><tr><th>Name</th><th>Status</th><th>Requirement</th><th>Project</th><th>Next action</th><th></th></tr></thead><tbody>
-    ${rows.map((l) => `<tr class="click" data-lead="${l.id}"><td><b>${esc(l.name)}</b><div class="small">${esc(l.phone)}</div></td><td>${badge(l.status)}</td><td>${esc(need(l))}</td><td>${esc(l.interested_project ?? '–')}</td><td class="small">${esc(l.next_action ?? '–')}</td>
-    <td><button data-call="${l.id}" ${l.dial_blocker || !meta.calling ? 'disabled' : ''} title="${esc(l.dial_blocker ?? (meta.calling ? 'Call now' : 'Connect Bolna to call'))}">Call</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty">No leads match.</div>'}</div></div>`;
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search name, phone, area" aria-label="Search leads" value="${esc(state.search)}">
+        <select id="filter" aria-label="Filter by status"><option value="">All statuses</option>
+          ${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${state.filter === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <span class="spacer"></span><button data-addlead>Add lead</button><button data-upload>Upload CSV</button>
+      </div>
+      <div class="card"><div class="tablewrap">${rows.length ? `<table>
+        <thead><tr><th>Name</th><th>Status</th><th>Requirement</th><th>Project</th><th>Next action</th><th>Call</th></tr></thead>
+        <tbody>${rows.map((l) => `<tr class="click" data-lead="${l.id}">
+          <td><button class="rowlink" data-lead="${l.id}">${esc(l.name)}</button><div class="small">${esc(l.phone)}</div></td>
+          <td>${badge(l.status)}</td><td>${esc(need(l))}</td><td>${esc(l.interested_project ?? '–')}</td>
+          <td class="small">${esc(l.next_action ?? '–')}</td>${callCell(l)}</tr>`).join('')}</tbody></table>`
+        : `<div class="empty">${all.length ? 'No leads match this search.' : 'No leads yet. Add one or upload a CSV.'}</div>`}</div></div>`;
   },
 
   async campaigns() {
     const [list, leads, projects] = await Promise.all([get('/api/campaigns'), get('/api/leads'), get('/api/projects')]);
     const ready = leads.filter((l) => !l.dial_blocker);
+    const picked = ready.filter((l) => state.selected.has(l.id)).length;
+    const rate = (n, d) => (d ? ` <span class="small">${Math.round((n / d) * 100)}%</span>` : '');
+    const row = (c) => `<tr><td><b>${esc(c.name)}</b><div class="small">${esc(c.project ?? 'Whole portfolio')}</div></td>
+      <td>${esc(CAMPAIGN_STATUS[c.status] ?? c.status)}</td><td>${c.dialled ?? 0} of ${c.total}</td>
+      <td>${c.reached ?? 0}${rate(c.reached ?? 0, c.dialled)}</td><td>${c.interested ?? 0}${rate(c.interested ?? 0, c.reached)}</td>
+      <td>${c.visits ?? 0}${rate(c.visits ?? 0, c.reached)}</td>
+      <td>${c.skipped ?? 0}${c.skip_reasons ? `<div class="small">${esc(c.skip_reasons)}</div>` : ''}</td>
+      <td class="small nowrap">${when(c.created_at)}</td></tr>`;
     return `<h1>Campaigns</h1><p class="sub">Choose a focus project. The agent still knows the whole portfolio on every call.</p>
-    <div class="card"><h2>New campaign</h2>
-    <div class="grid2"><label>Name<input id="cName" placeholder="Whitefield Heights launch"></label><label>Focus project<select id="cProject"><option value="">Whole portfolio</option>${projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label></div>
-    <p class="small" style="margin:0 0 6px">Callable leads (${ready.length})</p>
-    ${ready.length ? `<div style="max-height:170px;overflow:auto;margin-bottom:12px">${ready.map((l) => `<label style="display:flex;gap:8px;align-items:center;color:inherit;margin:4px 0"><input type="checkbox" style="width:auto;margin:0" data-pick="${l.id}" ${state.selected.has(l.id) ? 'checked' : ''}>${esc(l.name)} <span class="small">${esc(l.phone)}</span></label>`).join('')}</div>` : '<p class="small">Add a real lead with consent first. Sample leads have undialable numbers.</p>'}
-    <button class="primary" data-launch ${meta.calling && ready.length ? '' : 'disabled'}>Launch campaign</button>${meta.calling ? '' : ' <span class="small">Connect Bolna to launch.</span>'}</div>
-    <div class="card"><h2>Campaign history</h2><div class="tablewrap">${list.length ? `<table><thead><tr><th>Campaign</th><th>Focus</th><th>Status</th><th>Dialled</th><th>Skipped</th><th>Created</th></tr></thead><tbody>${list.map((c) => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.project ?? 'Portfolio')}</td><td>${esc(c.status)}</td><td>${c.dialled ?? 0} of ${c.total}</td><td>${c.skipped ?? 0}</td><td class="small">${when(c.created_at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No campaigns yet.</div>'}</div></div>`;
+      <div class="card"><h2>New campaign</h2>
+        <div class="grid2">
+          <label>Name<input id="cName" placeholder="Whitefield Heights launch" value="${esc(state.cName)}"></label>
+          <label>Focus project<select id="cProject"><option value="">Whole portfolio</option>
+            ${projects.map((p) => `<option value="${p.id}" ${String(p.id) === state.cProject ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        </div>
+        <div class="spread"><span class="small">Callable leads (${ready.length}), ${picked} selected</span>
+          ${ready.length ? `<button data-pickall="${picked === ready.length ? 'none' : 'all'}">${picked === ready.length ? 'Clear all' : 'Select all'}</button>` : ''}</div>
+        ${ready.length ? `<div class="picks">${ready.map((l) => `<label class="check"><input type="checkbox" data-pick="${l.id}" ${state.selected.has(l.id) ? 'checked' : ''}>
+          ${esc(l.name)} <span class="small">${esc(l.phone)}</span></label>`).join('')}</div>`
+          : '<p class="small">Add a real lead with consent first. Sample leads have undialable numbers.</p>'}
+        <button class="primary" data-launch ${meta.calling && picked ? '' : 'disabled'}>Launch campaign</button>
+        ${meta.calling ? '' : '<span class="small">Connect Bolna to launch.</span>'}
+      </div>
+      <div class="card"><h2>Campaign performance</h2><div class="tablewrap">${list.length ? `<table>
+        <thead><tr><th>Campaign</th><th>Status</th><th>Dialled</th><th>Reached</th><th>Interested</th><th>Visits</th><th>Skipped</th><th>Created</th></tr></thead>
+        <tbody>${list.map(row).join('')}</tbody></table>` : '<div class="empty">No campaigns yet.</div>'}</div></div>`;
   },
 
   async calls() {
-    const rows = await get('/api/calls');
-    state.calls = rows;
-    return `<h1>Call history</h1><p class="sub">Every attempt, with transcript and outcome.</p><div class="card"><div class="tablewrap">${rows.length ? `<table><thead><tr><th>Lead</th><th>Result</th><th>Duration</th><th>Campaign</th><th>Summary</th><th>Time</th></tr></thead><tbody>
-    ${rows.map((c) => `<tr class="click" data-callrow="${c.id}"><td><b>${esc(c.lead ?? 'Unknown')}</b><div class="small">${esc(c.phone ?? '')}</div></td><td><span class="badge ${c.connected ? 'good' : ''}">${c.connected ? 'Connected' : esc(c.status)}</span></td><td>${dur(c.duration)}</td><td class="small">${esc(c.campaign ?? 'Direct')}</td><td class="small" style="max-width:340px">${esc(c.summary ?? '–')}</td><td class="small" style="white-space:nowrap">${when(c.created_at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No calls yet.</div>'}</div></div>`;
+    const rows = state.calls;
+    return `<h1>Call history</h1><p class="sub">Every attempt, with transcript and outcome.</p>
+      <div class="card"><div class="tablewrap">${rows.length ? `<table>
+        <thead><tr><th>Lead</th><th>Result</th><th>Lead status</th><th>Duration</th><th>Campaign</th><th>Summary</th><th>Time</th></tr></thead>
+        <tbody>${rows.map((c) => `<tr class="click" data-callrow="${c.id}">
+          <td><button class="rowlink" data-callrow="${c.id}">${esc(c.lead ?? 'Unknown')}</button><div class="small">${esc(c.phone ?? '')}</div></td>
+          <td><span class="badge ${c.connected ? 'good' : ''}">${esc(resultOf(c))}</span></td>
+          <td>${c.lead_status ? badge(c.lead_status) : '–'}</td><td class="nowrap">${dur(c.duration)}</td>
+          <td class="small">${esc(c.campaign ?? 'Direct')}${c.project ? `<div>${esc(c.project)}</div>` : ''}</td>
+          <td class="small clip">${esc(c.summary ?? '–')}</td><td class="small nowrap">${when(c.created_at)}</td></tr>`).join('')}</tbody></table>`
+        : '<div class="empty">No calls yet.</div>'}</div></div>`;
   },
 
   async appointments() {
     const rows = await get('/api/appointments');
-    const table = (title, list) => `<div class="card"><h2>${title} (${list.length})</h2><div class="tablewrap">${list.length ? `<table><thead><tr><th>When</th><th>Customer</th><th>Details</th><th>Consultant</th><th>Briefing</th><th>Status</th></tr></thead><tbody>
-      ${list.map((a) => `<tr><td style="white-space:nowrap"><b>${day(a.date)}</b><div class="small">${hhmm(a.time)}</div></td><td><span class="click" data-lead="${a.lead_id}" style="cursor:pointer;font-weight:600">${esc(a.lead)}</span><div class="small">${esc(a.phone)}</div></td><td>${esc(a.project ?? 'Phone callback')}</td><td>${esc(a.rep ?? 'Unassigned')}</td><td class="small" style="max-width:300px">${esc(a.notes ?? a.summary ?? '–')}</td>
-      <td style="white-space:nowrap">${a.status === 'scheduled' ? `<button data-appt="${a.id}" data-to="completed">Done</button> <button data-appt="${a.id}" data-to="cancelled">Cancel</button>` : esc(a.status)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing here yet.</div>'}</div></div>`;
+    const now = nowIST();
+    const row = (a) => `<tr class="${state.freshAppts.has(a.id) ? 'fresh' : ''}">
+      <td class="nowrap"><b>${day(a.date)}</b><div class="small">${hhmm(a.time)}</div>
+        ${a.status === 'scheduled' && `${a.date} ${a.time}` < now ? '<span class="badge hot">Overdue</span>' : ''}</td>
+      <td><button class="rowlink" data-lead="${a.lead_id}">${esc(a.lead)}</button><div class="small">${esc(a.phone)}</div></td>
+      <td>${esc(a.project ?? 'Phone callback')}</td><td>${esc(a.rep ?? 'Unassigned')}</td>
+      <td class="small clip">${esc(a.notes ?? a.summary ?? '–')}</td>
+      <td class="nowrap">${a.status === 'scheduled'
+        ? `<button data-appt="${a.id}" data-to="completed">Done</button> <button data-appt="${a.id}" data-to="cancelled">Cancel</button>`
+        : esc(a.status)}</td></tr>`;
+    const table = (title, list) => `<div class="card"><h2>${title} (${list.length})</h2><div class="tablewrap">${list.length ? `<table>
+      <thead><tr><th>When</th><th>Customer</th><th>Details</th><th>Consultant</th><th>Briefing</th><th>Status</th></tr></thead>
+      <tbody>${list.map(row).join('')}</tbody></table>` : '<div class="empty">Nothing here yet.</div>'}</div></div>`;
     const open = rows.filter((a) => a.status === 'scheduled');
     return `<h1>Appointments</h1><p class="sub">Consultants see the customer's needs before they meet or call.</p>
-    ${table('Site visits', open.filter((a) => a.type === 'visit'))}${table('Human callbacks', open.filter((a) => a.type === 'callback'))}${table('Past and cancelled', rows.filter((a) => a.status !== 'scheduled'))}`;
+      ${table('Site visits', open.filter((a) => a.type === 'visit'))}
+      ${table('Human callbacks', open.filter((a) => a.type === 'callback'))}
+      ${table('Completed', rows.filter((a) => a.status === 'completed'))}
+      ${table('Cancelled', rows.filter((a) => a.status === 'cancelled'))}`;
   },
 
   async projects() {
     const list = await get('/api/projects');
-    return `<div class="toolbar" style="margin-bottom:4px"><div><h1>Projects</h1></div><span class="spacer"></span><button class="primary" data-addproject>Add project</button></div>
-    <p class="sub">The agent reads this live, so a new project is available on the next call.</p>
-    <div class="projects">${list.map((p) => `<div class="card"><h2 style="margin-bottom:2px">${esc(p.name)}</h2><div class="small">${esc(p.location)}</div>
-    <table class="units"><thead><tr><th>Type</th><th>Size</th><th>From</th><th>Left</th></tr></thead><tbody>${p.configs.map((c) => `<tr><td>${c.bhk} BHK</td><td>${c.size_sqft} sq ft</td><td>${price(c.price_lakh)}</td><td>${c.units_left}</td></tr>`).join('')}</tbody></table>
-    <div class="small" style="margin-bottom:8px">Possession: ${esc(p.possession || '–')}</div><div class="chips">${p.amenities.map((a) => `<span>${esc(a)}</span>`).join('')}</div></div>`).join('')}</div>`;
+    return `<div class="toolbar" style="margin-bottom:4px"><div><h1>Projects</h1></div><span class="spacer"></span>
+        <button class="primary" data-addproject>Add project</button></div>
+      <p class="sub">The agent reads this live, so a new project is available on the next call.</p>
+      <div class="projects">${list.map((p) => `<div class="card"><h2 style="margin-bottom:2px">${esc(p.name)}</h2><div class="small">${esc(p.location)}</div>
+        <table class="units"><thead><tr><th>Type</th><th>Size</th><th>From</th><th>Left</th></tr></thead>
+        <tbody>${p.configs.map((c) => `<tr><td>${c.bhk} BHK</td><td>${c.size_sqft} sq ft</td><td>${price(c.price_lakh)}</td><td>${c.units_left}</td></tr>`).join('')}</tbody></table>
+        <div class="small" style="margin-bottom:8px">Possession: ${esc(p.possession || '–')}</div>
+        <div class="chips">${p.amenities.map((a) => `<span>${esc(a)}</span>`).join('')}</div></div>`).join('')}</div>`;
   },
 };
 
 function links() {
-  $('#links').innerHTML = Object.entries(TABS).map(([k, v]) => `<a href="#${k}" class="${k === tab ? 'on' : ''}" ${k === tab ? 'aria-current="page"' : ''}>${v}</a>`).join('');
+  const box = $('#links');
+  if (!box.children.length) box.innerHTML = Object.entries(TABS).map(([k, v]) => `<a href="#${k}">${v}</a>`).join('');
+  for (const a of box.children) {
+    const on = a.hash === `#${tab}`;
+    a.classList.toggle('on', on);
+    if (on) { a.setAttribute('aria-current', 'page'); a.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+    else a.removeAttribute('aria-current');
+  }
 }
+
+/** Builds a selector that finds the same control again after the page is rebuilt. */
+function focusSelector(el) {
+  if (!el || el === document.body) return null;
+  if (el.id) return `#${el.id}`;
+  const attrs = Object.entries(el.dataset ?? {}).map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${CSS.escape(v)}"]`);
+  return attrs.length ? attrs.join('') : null;
+}
+
 let renderId = 0;
-async function render(keepFocus) {
+let lastHtml = '';
+async function render() {
   const id = ++renderId;
-  const focused = keepFocus && document.activeElement?.id;
-  const pos = focused && document.activeElement.selectionStart;
-  meta = await get('/api/overview');
+  const fetched = await get('/api/overview');
+  meta = fetched;
   $('#status').innerHTML = `<span class="dot ${meta.calling ? 'on' : ''}"></span>${meta.calling ? 'Bolna connected' : 'Bolna not connected'}`;
   const html = await views[tab]();
-  if (id !== renderId) return;
+  if (id !== renderId || html === lastHtml) return;
+  const active = document.activeElement;
+  const selector = focusSelector(active);
+  const caret = active?.selectionStart;
+  const scroll = [...document.querySelectorAll('.tablewrap')].map((w) => w.scrollLeft);
+  lastHtml = html;
   $('#view').innerHTML = html;
-  if (focused && $('#' + focused)) { const el = $('#' + focused); el.focus(); if (pos != null && el.setSelectionRange) try { el.setSelectionRange(pos, pos); } catch {} }
+  document.querySelectorAll('.tablewrap').forEach((w, i) => { w.scrollLeft = scroll[i] ?? 0; });
+  const el = selector && $(selector);
+  if (el) {
+    el.focus({ preventScroll: true });
+    if (caret != null) { try { el.setSelectionRange(caret, caret); } catch { /* inputs without a caret */ } }
+  }
 }
-const safeRender = (k) => render(k).catch((e) => { $('#view').innerHTML = `<div class="card">Could not load: ${esc(e.message)}</div>`; });
+const safeRender = () => render().catch((e) => {
+  lastHtml = '';
+  $('#view').innerHTML = `<div class="card">Could not load: ${esc(e.message)}</div>`;
+});
 
-function openDlg(html) { $('#dlgBody').innerHTML = html; $('#dlg').showModal(); }
+/** Refreshes what must stay current on every tab: the active call banner and new bookings. */
+async function pollLive() {
+  const [calls, appts] = await Promise.all([get('/api/calls'), get('/api/appointments')]);
+  state.calls = calls;
+  const active = calls.filter(isActive);
+  state.activeLeads = new Set(active.map((c) => c.lead_id));
+  const live = $('#live');
+  live.hidden = !active.length;
+  live.innerHTML = active.length ? `<i></i>${active.map((c) => {
+    const secs = Math.max(0, Math.floor((Date.now() - utc(c.created_at)) / 1000));
+    return `${esc(RESULT[c.status] ?? 'On call')}: ${esc(c.lead ?? c.phone ?? 'Unknown')} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  }).join(' &nbsp;|&nbsp; ')}` : '';
+
+  const scheduled = appts.filter((a) => a.status === 'scheduled');
+  if (state.seenAppts) {
+    for (const a of scheduled.filter((x) => !state.seenAppts.has(x.id))) {
+      const what = a.type === 'visit' ? `Visit booked: ${a.lead}, ${a.project}` : `Callback booked: ${a.lead}`;
+      toast(`${what}, ${day(a.date)}, ${hhmm(a.time)}`, 8000);
+      state.freshAppts.add(a.id);
+      setTimeout(() => { state.freshAppts.delete(a.id); }, 15000);
+    }
+  }
+  state.seenAppts = new Set(appts.map((a) => a.id));
+}
+
+async function poll() {
+  if (document.hidden) return;
+  try {
+    await pollLive();
+    // Rebuilding would close an open dropdown or disturb a dialog.
+    if (!$('#dlg').open && document.activeElement?.tagName !== 'SELECT') await render();
+  } catch {
+    $('#status').innerHTML = '<span class="dot"></span>Reconnecting…';
+  }
+}
+
+function openDlg(html) {
+  $('#dlgBody').innerHTML = html;
+  $('#dlgBody h2').id = 'dlgTitle';
+  $('#dlg').showModal();
+  $('#dlgBody form input')?.focus();
+}
 const closeBtn = '<button data-close aria-label="Close">Close</button>';
 
 async function showLead(id) {
   const l = await get(`/api/leads/${id}`);
-  openDlg(`<header><div><h2 style="font-size:20px;margin:0">${esc(l.name)}</h2><span class="small">${esc(l.phone)} · ${esc(l.source)}</span></div>${closeBtn}</header>${badge(l.status)} ${l.do_not_call ? '<span class="badge">Do not call</span>' : ''}
-  <div class="kv">${[['Location', l.pref_location], ['BHK', l.pref_bhk], ['Budget', l.budget_lakh && price(l.budget_lakh)], ['Purpose', l.purpose], ['Timeline', l.timeline], ['Project', l.interested_project], ['Next action', l.next_action], ['Enquiry', l.enquiry]].map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
-  ${l.summary ? `<p>${esc(l.summary)}</p>` : ''}
-  <h2>Appointments</h2>${l.appointments.length ? l.appointments.map((a) => `<p class="small" style="margin:4px 0">${a.type === 'visit' ? esc(a.project) + ' visit' : 'Callback'}, ${day(a.date)} ${hhmm(a.time)} (${esc(a.status)})</p>`).join('') : '<p class="small">None</p>'}
-  <h2 style="margin-top:14px">Calls</h2>${l.calls.length ? l.calls.map((c) => `<p class="small" style="margin:4px 0">${when(c.created_at)}, ${esc(c.status)}, ${dur(c.duration)}${c.recording_url ? ` · <a href="${esc(c.recording_url)}" target="_blank" rel="noopener noreferrer">Recording</a>` : ''}</p>${c.transcript ? transcriptHtml(c.transcript) : ''}`).join('') : '<p class="small">None</p>'}`);
+  const facts = [
+    ['Location', l.pref_location], ['BHK', l.pref_bhk], ['Budget', l.budget_lakh && price(l.budget_lakh)], ['Purpose', l.purpose],
+    ['Timeline', l.timeline], ['Project', l.interested_project], ['Next action', l.next_action], ['Enquiry', l.enquiry],
+  ];
+  const appt = (a) => `<p class="small" style="margin:4px 0">${a.type === 'visit' ? `${esc(a.project)} visit` : 'Callback'},
+    ${day(a.date)} ${hhmm(a.time)}, ${esc(a.rep ?? 'Unassigned')} (${esc(a.status)})</p>`;
+  const call = (c) => `<p class="small" style="margin:4px 0">${when(c.created_at)}, ${esc(resultOf(c))}, ${dur(c.duration)}</p>
+    ${c.summary ? `<p class="small">${esc(c.summary)}</p>` : ''}${recordingHtml(c.recording_url)}${c.transcript ? transcriptHtml(c.transcript) : ''}`;
+  openDlg(`<header><div><h2 class="title">${esc(l.name)}</h2><span class="small">${esc(l.phone)} · ${esc(l.source)}</span></div>${closeBtn}</header>
+    ${badge(l.status)} ${l.do_not_call ? '<span class="badge">Do not call</span>' : ''}
+    <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
+    ${l.summary ? `<p>${esc(l.summary)}</p>` : ''}
+    <h2>Appointments</h2>${l.appointments.length ? l.appointments.map(appt).join('') : '<p class="small">None</p>'}
+    <h2 style="margin-top:14px">Calls</h2>${l.calls.length ? l.calls.map(call).join('') : '<p class="small">None</p>'}`);
 }
 
 function showCall(id) {
   const c = state.calls.find((x) => x.id === id);
-  openDlg(`<header><div><h2 style="font-size:20px;margin:0">${esc(c.lead ?? 'Unknown')}</h2><span class="small">${when(c.created_at)} · ${dur(c.duration)} · ${esc(c.status)}</span></div>${closeBtn}</header>
-  ${c.summary ? `<p>${esc(c.summary)}</p>` : ''}${c.recording_url ? `<p><a href="${esc(c.recording_url)}" target="_blank" rel="noopener noreferrer">Open recording</a></p>` : ''}${transcriptHtml(c.transcript)}`);
+  if (!c) return;
+  const facts = [
+    ['Result', resultOf(c)], ['Lead status', LABEL[c.lead_status] ?? c.lead_status], ['Duration', dur(c.duration)],
+    ['Campaign', c.campaign ?? 'Direct'], ['Project', c.project],
+  ];
+  openDlg(`<header><div><h2 class="title">${esc(c.lead ?? 'Unknown')}</h2><span class="small">${when(c.created_at)}</span></div>${closeBtn}</header>
+    <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
+    ${c.summary ? `<p>${esc(c.summary)}</p>` : ''}${recordingHtml(c.recording_url)}${transcriptHtml(c.transcript)}`);
 }
 
 const FORMS = {
-  lead: `<header><h2 style="font-size:20px;margin:0">Add lead</h2>${closeBtn}</header><form data-form="lead"><label>Name<input name="name" required></label><label>Phone<input name="phone" required placeholder="+91 98xxxxxxxx" inputmode="tel"></label><label>Enquiry<input name="enquiry" placeholder="3 BHK in Whitefield"></label><label style="display:flex;gap:8px;align-items:center;color:inherit"><input type="checkbox" name="consent" style="width:auto;margin:0" required>This person agreed to be contacted</label><button class="primary">Save lead</button></form>`,
-  csv: `<header><h2 style="font-size:20px;margin:0">Upload leads</h2>${closeBtn}</header><p class="small">CSV columns: name, phone, enquiry, source, consent. Set consent to yes only where you hold it. Other leads are saved but will not be called.</p><form data-form="csv"><label>CSV file<input type="file" name="file" accept=".csv,text/csv" required></label><button class="primary">Upload</button></form>`,
-  project: `<header><h2 style="font-size:20px;margin:0">Add project</h2>${closeBtn}</header><form data-form="project"><div class="grid2"><label>Name<input name="name" required></label><label>Location<input name="location" required placeholder="Hebbal, Bengaluru"></label></div><label>Areas callers may mention, comma separated<input name="areas" placeholder="hebbal, manyata"></label><label>Description<textarea name="description" rows="2"></textarea></label><div class="grid2"><label>BHK<input name="bhk" type="number" min="1" max="9" required></label><label>Size, sq ft<input name="size_sqft" type="number" min="1" required></label><label>Starting price, lakh<input name="price_lakh" type="number" min="1" step="0.1" required></label><label>Units left<input name="units_left" type="number" min="0" required></label></div><label>Amenities, comma separated<input name="amenities"></label><div class="grid2"><label>Possession<input name="possession"></label><label>Nearby landmarks, comma separated<input name="landmarks"></label></div><label>Payment plan<input name="payment_plan"></label><button class="primary">Save project</button></form>`,
+  lead: `<header><h2 class="title">Add lead</h2>${closeBtn}</header>
+    <form data-form="lead">
+      <label>Name<input name="name" required></label>
+      <label>Phone<input name="phone" required placeholder="+91 98xxxxxxxx" inputmode="tel"></label>
+      <label>Enquiry<input name="enquiry" placeholder="3 BHK in Whitefield"></label>
+      <label class="check"><input type="checkbox" name="consent" required>This person agreed to be contacted</label>
+      <button class="primary">Save lead</button>
+    </form>`,
+  csv: `<header><h2 class="title">Upload leads</h2>${closeBtn}</header>
+    <p class="small">CSV columns: name, phone, enquiry, source, consent. Set consent to yes only where you hold it.
+      Other leads are saved but will not be called.</p>
+    <form data-form="csv">
+      <label>CSV file<input type="file" name="file" accept=".csv,text/csv" required></label>
+      <button class="primary">Upload</button>
+    </form>`,
+  project: `<header><h2 class="title">Add project</h2>${closeBtn}</header>
+    <form data-form="project">
+      <div class="grid2">
+        <label>Name<input name="name" required></label>
+        <label>Location<input name="location" required placeholder="Hebbal, Bengaluru"></label>
+      </div>
+      <label>Areas callers may mention, comma separated<input name="areas" placeholder="hebbal, manyata"></label>
+      <label>Description<textarea name="description" rows="2"></textarea></label>
+      <div class="grid2">
+        <label>BHK<input name="bhk" type="number" min="1" max="9" required></label>
+        <label>Size, sq ft<input name="size_sqft" type="number" min="1" required></label>
+        <label>Starting price, lakh<input name="price_lakh" type="number" min="1" step="0.1" required></label>
+        <label>Units left<input name="units_left" type="number" min="0" required></label>
+      </div>
+      <label>Amenities, comma separated<input name="amenities"></label>
+      <div class="grid2">
+        <label>Possession<input name="possession"></label>
+        <label>Nearby landmarks, comma separated<input name="landmarks"></label>
+      </div>
+      <label>Payment plan<input name="payment_plan"></label>
+      <button class="primary">Save project</button>
+    </form>`,
 };
 
 document.addEventListener('click', act(async (e) => {
@@ -205,45 +467,89 @@ document.addEventListener('click', act(async (e) => {
   if (!t) return;
   const d = t.dataset;
   if ('close' in d) return $('#dlg').close();
-  if ('clear' in d) { await post('/api/samples/clear'); toast('Sample data cleared'); return safeRender(); }
-  if (d.call) { e.stopPropagation(); const r = await post(`/api/leads/${d.call}/call`); toast(`Calling now: ${r.execution_id.slice(0, 8)}`); return safeRender(); }
+  if ('clear' in d) {
+    if (!confirm('Delete all sample leads, calls and appointments? This cannot be undone.')) return;
+    await post('/api/samples/clear');
+    toast('Sample data cleared');
+    return safeRender();
+  }
+  if (d.call) {
+    await once(t, () => post(`/api/leads/${d.call}/call`));
+    toast('Calling now. Follow it in Call history.');
+    await pollLive().catch(noop);
+    return safeRender();
+  }
   if ('addlead' in d) return openDlg(FORMS.lead);
   if ('upload' in d) return openDlg(FORMS.csv);
   if ('addproject' in d) return openDlg(FORMS.project);
-  if (d.appt) { await post(`/api/appointments/${d.appt}`, { status: d.to }); return safeRender(); }
+  if (d.appt) {
+    if (d.to === 'cancelled' && !confirm('Cancel this appointment? The buyer is not told automatically.')) return;
+    await once(t, () => post(`/api/appointments/${d.appt}`, { status: d.to }));
+    return safeRender();
+  }
+  if (d.pickall) {
+    document.querySelectorAll('[data-pick]').forEach((box) => {
+      const id = Number(box.dataset.pick);
+      if (d.pickall === 'all') state.selected.add(id); else state.selected.delete(id);
+    });
+    return safeRender();
+  }
   if ('launch' in d) {
-    const lead_ids = [...state.selected];
-    await post('/api/campaigns', { name: $('#cName').value, project_id: Number($('#cProject').value) || null, lead_ids });
-    state.selected.clear(); toast('Campaign launched'); return safeRender();
+    const lead_ids = [...state.selected].filter((id) => $(`[data-pick="${id}"]`));
+    await once(t, () => post('/api/campaigns', { name: state.cName, project_id: Number(state.cProject) || null, lead_ids }));
+    state.selected.clear(); state.cName = ''; state.cProject = '';
+    toast('Campaign launched');
+    return safeRender();
   }
   if (d.lead) return showLead(d.lead);
   if (d.callrow) return showCall(Number(d.callrow));
 }));
 
 document.addEventListener('change', (e) => {
-  if (e.target.dataset.pick) { const id = Number(e.target.dataset.pick); e.target.checked ? state.selected.add(id) : state.selected.delete(id); }
-  if (e.target.id === 'filter') { state.filter = e.target.value; safeRender(); }
+  const { id, dataset, value, checked } = e.target;
+  if (dataset.pick) {
+    const lead = Number(dataset.pick);
+    if (checked) state.selected.add(lead); else state.selected.delete(lead);
+    safeRender();
+  }
+  if (id === 'filter') { state.filter = value; safeRender(); }
+  if (id === 'cProject') state.cProject = value;
 });
-document.addEventListener('input', (e) => { if (e.target.id === 'search') { state.search = e.target.value; safeRender(true); } });
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'search') { state.search = e.target.value; safeRender(); }
+  if (e.target.id === 'cName') state.cName = e.target.value;
+});
 
 document.addEventListener('submit', act(async (e) => {
   const form = e.target.closest('[data-form]');
   if (!form) return;
   e.preventDefault();
   const f = Object.fromEntries(new FormData(form));
-  if (form.dataset.form === 'lead') { await post('/api/leads', { ...f, consent: f.consent ? 'yes' : '', source: 'Manual' }); toast('Lead added'); }
-  if (form.dataset.form === 'csv') { const r = await post('/api/leads/csv', await f.file.text(), true); toast(`Added ${r.added}. ${r.errors.length ? r.errors.length + ' skipped.' : ''}`); }
-  if (form.dataset.form === 'project') {
-    const { bhk, size_sqft, price_lakh, units_left, ...rest } = f;
-    await post('/api/projects', { ...rest, configs: [{ bhk, size_sqft, price_lakh, units_left }] }); toast('Project saved. The agent can use it now.');
-  }
-  $('#dlg').close(); safeRender();
+  await once(form.querySelector('button.primary'), async () => {
+    if (form.dataset.form === 'lead') {
+      await post('/api/leads', { ...f, consent: f.consent ? 'yes' : '', source: 'Manual' });
+      toast('Lead added');
+    }
+    if (form.dataset.form === 'csv') {
+      const r = await post('/api/leads/csv', await f.file.text(), true);
+      if (!r.added && r.errors.length) throw new Error(`Nothing added. First problem: ${r.errors[0]}`);
+      const notes = [r.errors.length && `${r.errors.length} skipped`, r.noConsent && `${r.noConsent} without consent will not be called`];
+      toast(`Added ${r.added}. ${notes.filter(Boolean).join('. ')}`.trim(), 6000);
+    }
+    if (form.dataset.form === 'project') {
+      const { bhk, size_sqft, price_lakh, units_left, ...rest } = f;
+      await post('/api/projects', { ...rest, configs: [{ bhk, size_sqft, price_lakh, units_left }] });
+      toast('Project saved. The agent can use it now.');
+    }
+  });
+  $('#dlg').close();
+  safeRender();
 }));
 
-addEventListener('hashchange', () => { const h = location.hash.slice(1); tab = h in TABS ? h : 'overview'; links(); safeRender(); });
-// Live updates during a call, paused while the user is working in a form or dialog.
-setInterval(() => { if (!$('#dlg').open && ['overview', 'calls', 'appointments'].includes(tab) && !document.hidden) safeRender(); }, 4000);
-links(); safeRender();
+addEventListener('hashchange', () => { tab = tabFromHash(); links(); scrollTo(0, 0); safeRender(); });
+setInterval(poll, 4000);
+links();
+pollLive().catch(noop).finally(safeRender);
 </script>
 </body>
 </html>

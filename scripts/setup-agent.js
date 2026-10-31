@@ -2,7 +2,8 @@
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { config, ROOT } from '../src/config.js';
-import { buildAgent } from '../src/agent-config.js';
+import { buildAgent, DISPOSITIONS } from '../src/agent-config.js';
+import { allProjects, openDb } from '../src/db.js';
 
 const API = 'https://api.bolna.ai';
 const fail = (msg) => { console.error(msg); process.exit(1); };
@@ -18,7 +19,10 @@ console.log(`Bolna account OK. Wallet: ${account.wallet}. Concurrency: ${account
 const health = await fetch(`${config.publicUrl}/healthz`).catch(() => null);
 if (!health?.ok) fail(`${config.publicUrl}/healthz is not reachable. Start the server and tunnel first.`);
 
-const body = buildAgent({ publicUrl: config.publicUrl, toolToken: config.toolToken, voiceProfile: config.voiceProfile });
+const body = buildAgent({
+  publicUrl: config.publicUrl, toolToken: config.toolToken, webhookToken: config.webhookToken,
+  voiceProfile: config.voiceProfile, projects: allProjects(openDb(config.dbPath)),
+});
 const existing = config.agentId;
 const send = (payload) => fetch(existing ? `${API}/v2/agent/${existing}` : `${API}/v2/agent`, {
   method: existing ? 'PUT' : 'POST', headers, body: JSON.stringify(payload),
@@ -42,4 +46,12 @@ if (!existing) {
   if (/^BOLNA_AGENT_ID=.*$/m.test(env)) writeFileSync(envPath, env.replace(/^BOLNA_AGENT_ID=.*$/m, `BOLNA_AGENT_ID=${agentId}`));
   else appendFileSync(envPath, `\nBOLNA_AGENT_ID=${agentId}\n`);
 }
-console.log(`Agent ${existing ? 'updated' : 'created'}: ${agentId}\nRestart the server so it picks up the agent id.`);
+// Extractions are the safety net for opt-outs. Only missing ones are added, so reruns are safe.
+const listed = await (await fetch(`${API}/dispositions/?agent_id=${agentId}`, { headers })).json().catch(() => []);
+const have = new Set((Array.isArray(listed) ? listed : listed.data ?? []).map((d) => d.name));
+const missing = DISPOSITIONS.filter((d) => !have.has(d.name));
+if (missing.length) {
+  const made = await fetch(`${API}/dispositions/bulk`, { method: 'POST', headers, body: JSON.stringify({ agent_id: agentId, dispositions: missing }) });
+  console.log(made.ok ? `Added ${missing.length} extractions.` : `Extractions not added (${made.status}): ${await made.text()}`);
+}
+console.log(`Agent ${existing ? 'updated' : 'created'}: ${agentId}\nRestart the server so it picks up any change.`);
