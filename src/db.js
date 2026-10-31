@@ -1,3 +1,4 @@
+import { chmodSync, existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { addDays, nextWeekday, todayIST } from './parse.js';
 
@@ -75,6 +76,8 @@ export function openDb(file) {
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
   if (!db.prepare('SELECT 1 FROM company').get()) seed(db);
+  // This file holds buyers' phone numbers, so only this user may read it.
+  for (const f of [file, `${file}-wal`, `${file}-shm`]) if (existsSync(f)) chmodSync(f, 0o600);
   return db;
 }
 

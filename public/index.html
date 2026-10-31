@@ -18,6 +18,8 @@ nav a{display:block;padding:9px 12px;border-radius:8px;color:#dcebe5;text-decora
 nav a:hover{background:#ffffff1a}nav a.on{background:#fff;color:var(--brand);font-weight:600}
 nav a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .status{margin-top:auto;font-size:13px;padding:12px;color:#dcebe5;white-space:nowrap}
+#signout{background:none;border:1px solid #ffffff66;color:#dcebe5;padding:3px 9px;font-size:12px;margin-top:8px}#signout:hover{border-color:#fff}
+#signout:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#f0b64a}.dot.on{background:#6fe0a8}
 main{padding:28px 32px 60px;max-width:1240px;width:100%}
 h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}h2{font-size:16px;margin:0 0 12px}.sub{color:var(--muted);margin:0 0 22px}
@@ -65,20 +67,20 @@ audio{width:100%;margin:6px 0 12px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:9px;z-index:50;max-width:calc(100vw - 32px)}
 .empty{color:var(--muted);text-align:center;padding:30px 10px}
 @media (max-width:760px){.app{display:block}nav{position:static;height:auto;padding:12px 8px;flex-direction:row;overflow-x:auto;align-items:center;gap:2px}
-.logo{padding:0 8px;white-space:nowrap}.status{margin:0 0 0 8px;padding:0 8px}nav a{white-space:nowrap;margin:0}main{padding:18px 16px 50px}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.logo{padding:0 8px;white-space:nowrap}.status{margin:0 0 0 8px;padding:0 8px;display:flex;align-items:center;gap:10px}#signout{margin:0}nav a{white-space:nowrap;margin:0}main{padding:18px 16px 50px}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 .funnel .row{grid-template-columns:96px 1fr 28px 38px}}
 </style>
 </head>
 <body>
 <div class="app">
-  <nav aria-label="Main"><div class="logo">PropReach <span>AI</span></div><div id="links" style="display:contents"></div><div class="status" id="status"></div></nav>
+  <nav aria-label="Main"><div class="logo">PropReach <span>AI</span></div><div id="links" style="display:contents"></div>
+    <div class="status"><div id="status"></div><button id="signout" data-logout hidden>Sign out</button></div></nav>
   <main><a class="live" id="live" href="#calls" hidden></a><div id="view"></div></main>
 </div>
 <dialog id="dlg" aria-labelledby="dlgTitle"><div class="dlg" id="dlgBody"></div></dialog>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : '');
 const noop = () => {};
 
 const TABS = { overview: 'Overview', leads: 'Leads', campaigns: 'Campaigns', calls: 'Call history', appointments: 'Appointments', projects: 'Projects' };
@@ -104,11 +106,17 @@ let meta = {};
 
 async function get(path) {
   const r = await fetch(path);
+  if (r.status === 401) location.replace('/login');
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
   return r.json();
 }
 async function post(path, body, raw) {
-  const r = await fetch(path, { method: 'POST', body: raw ? body : JSON.stringify(body ?? {}) });
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'x-propreach-client': 'dashboard' },
+    body: raw ? body : JSON.stringify(body ?? {}),
+  });
+  if (r.status === 401) location.replace('/login');
   const out = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(out.error || r.statusText);
   return out;
@@ -152,11 +160,9 @@ function transcriptHtml(text) {
   }).join('')}</div>`;
 }
 
-function recordingHtml(url) {
-  const src = esc(safeUrl(url));
-  if (!src) return '';
-  return `<audio controls preload="none" src="${src}"></audio>
-    <p class="small"><a href="${src}" target="_blank" rel="noopener noreferrer">Open recording</a></p>`;
+function recordingHtml(call) {
+  if (!call.has_recording) return '';
+  return `<audio controls preload="none" src="/api/calls/${Number(call.id)}/recording"></audio>`;
 }
 
 const views = {
@@ -328,6 +334,7 @@ async function render() {
   const fetched = await get('/api/overview');
   meta = fetched;
   $('#status').innerHTML = `<span class="dot ${meta.calling ? 'on' : ''}"></span>${meta.calling ? 'Bolna connected' : 'Bolna not connected'}`;
+  $('#signout').hidden = !meta.signInRequired;
   const html = await views[tab]();
   if (id !== renderId || html === lastHtml) return;
   const active = document.activeElement;
@@ -401,7 +408,7 @@ async function showLead(id) {
   const appt = (a) => `<p class="small" style="margin:4px 0">${a.type === 'visit' ? `${esc(a.project)} visit` : 'Callback'},
     ${day(a.date)} ${hhmm(a.time)}, ${esc(a.rep ?? 'Unassigned')} (${esc(a.status)})</p>`;
   const call = (c) => `<p class="small" style="margin:4px 0">${when(c.created_at)}, ${esc(resultOf(c))}, ${dur(c.duration)}</p>
-    ${c.summary ? `<p class="small">${esc(c.summary)}</p>` : ''}${recordingHtml(c.recording_url)}${c.transcript ? transcriptHtml(c.transcript) : ''}`;
+    ${c.summary ? `<p class="small">${esc(c.summary)}</p>` : ''}${recordingHtml(c)}${c.transcript ? transcriptHtml(c.transcript) : ''}`;
   openDlg(`<header><div><h2 class="title">${esc(l.name)}</h2><span class="small">${esc(l.phone)} · ${esc(l.source)}</span></div>${closeBtn}</header>
     ${badge(l.status)} ${l.do_not_call ? '<span class="badge">Do not call</span>' : ''}
     <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
@@ -419,7 +426,7 @@ function showCall(id) {
   ];
   openDlg(`<header><div><h2 class="title">${esc(c.lead ?? 'Unknown')}</h2><span class="small">${when(c.created_at)}</span></div>${closeBtn}</header>
     <div class="kv">${facts.map(([k, v]) => `<div><span>${k}</span>${esc(v || '–')}</div>`).join('')}</div>
-    ${c.summary ? `<p>${esc(c.summary)}</p>` : ''}${recordingHtml(c.recording_url)}${transcriptHtml(c.transcript)}`);
+    ${c.summary ? `<p>${esc(c.summary)}</p>` : ''}${recordingHtml(c)}${transcriptHtml(c.transcript)}`);
 }
 
 const FORMS = {
@@ -467,6 +474,7 @@ document.addEventListener('click', act(async (e) => {
   if (!t) return;
   const d = t.dataset;
   if ('close' in d) return $('#dlg').close();
+  if ('logout' in d) { await post('/logout'); location.replace('/login'); return; }
   if ('clear' in d) {
     if (!confirm('Delete all sample leads, calls and appointments? This cannot be undone.')) return;
     await post('/api/samples/clear');

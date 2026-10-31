@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 process.env.NODE_ENV = 'test';
 process.env.TOOL_TOKEN = 'test-token';
+// Set before config loads, so a developer's real .env can never reach these tests.
+for (const name of ['BOLNA_API_KEY', 'BOLNA_AGENT_ID', 'DASHBOARD_PASSWORD', 'PUBLIC_URL', 'BOLNA_FROM_NUMBER']) process.env[name] = '';
 const { openDb, clearSamples } = await import('../src/db.js');
 const { addDays, nextWeekday, normalizePhone, isDialable, parseBudgetLakh, parseBhk, parseCsv, parseTime, clean, todayIST } = await import('../src/parse.js');
 const { bookVisit, checkSlots, getProjectDetails, scheduleCallback, searchProjects, updateLead } = await import('../src/tools.js');
@@ -11,6 +13,11 @@ const { createApp } = await import('../src/server.js');
 const { allProjects } = await import('../src/db.js');
 const { config } = await import('../src/config.js');
 const net = await import('node:net');
+const nodeHttp = await import('node:http');
+const fs = await import('node:fs');
+const os = await import('node:os');
+const path = await import('node:path');
+const { spawnSync } = await import('node:child_process');
 
 const fresh = () => openDb(':memory:');
 const saturday = () => nextWeekday(todayIST(), 6);
@@ -203,7 +210,7 @@ test('agent config: disclosure, tools and parameters line up', () => {
   }
 });
 
-test('http: tools need the token, dashboard password works', async () => {
+test('http: tools need the token', async () => {
   const db = fresh();
   const server = createApp(db).listen(0);
   await new Promise((r) => server.once('listening', r));
@@ -215,16 +222,12 @@ test('http: tools need the token, dashboard password works', async () => {
     const ok = await post('/tools/search_projects', { Authorization: 'Bearer test-token' }, '{"location":"Sarjapur","bhk":"any","budget":"any"}');
     assert.equal((await ok.json()).match_count, 1);
     assert.equal((await post('/webhooks/bolna?token=bad', {})).status, 401);
-    process.env.DASHBOARD_PASSWORD = 'pw';
-    assert.equal((await fetch(`${base}/api/leads`)).status, 401);
-    const auth = `Basic ${Buffer.from('admin:pw').toString('base64')}`;
-    assert.equal((await fetch(`${base}/api/leads`, { headers: { Authorization: auth } })).status, 200);
   } finally {
-    delete process.env.DASHBOARD_PASSWORD;
     server.close();
   }
 });
 
+const DASHBOARD = { 'x-propreach-client': 'dashboard' };
 const WITH_CREDS = () => { process.env.BOLNA_API_KEY = 'k'; process.env.BOLNA_AGENT_ID = 'a'; };
 const NO_CREDS = () => { delete process.env.BOLNA_API_KEY; delete process.env.BOLNA_AGENT_ID; };
 const okFetch = (log) => async (_u, o) => {
@@ -470,7 +473,7 @@ test('cancelling an appointment updates the lead, and bad ids and slots are hand
   const db = fresh();
   const server = createApp(db).listen(0);
   await new Promise((r) => server.once('listening', r));
-  const post = (path, body) => fetch(`http://127.0.0.1:${server.address().port}${path}`, { method: 'POST', body: JSON.stringify(body) });
+  const post = (path, body) => fetch(`http://127.0.0.1:${server.address().port}${path}`, { method: 'POST', headers: DASHBOARD, body: JSON.stringify(body) });
   try {
     const appt = db.prepare("SELECT * FROM appointments WHERE type = 'visit' LIMIT 1").get();
     assert.equal((await post(`/api/appointments/${appt.id}`, { status: 'cancelled' })).status, 200);
@@ -519,4 +522,188 @@ test('http: a malformed path cannot crash the server, and split Hindi survives',
     assert.equal(db.prepare("SELECT transcript FROM calls WHERE execution_id = 'e9'").get().transcript, 'user: नमस्ते');
     assert.equal((await fetch(`http://127.0.0.1:${port}/webhooks/bolna?token=${config.toolToken}`, { method: 'POST', body: '{}' })).status, 401);
   } finally { server.close(); }
+});
+
+const withApp = async (fn, options) => {
+  const db = fresh();
+  const server = createApp(db, options).listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try { await fn({ db, base, port: server.address().port }); } finally { server.close(); }
+};
+const withPassword = async (fn, options) => {
+  process.env.DASHBOARD_PASSWORD = 'correct-horse-battery';
+  try { await withApp(fn, options); } finally { delete process.env.DASHBOARD_PASSWORD; }
+};
+const signIn = (base, password) => fetch(`${base}/login`, { method: 'POST', headers: DASHBOARD, body: JSON.stringify({ password }) });
+
+test('no secret reaches any response, even with every route called', async () => {
+  const canaries = { BOLNA_API_KEY: 'bn-canary-bolna-key', BOLNA_AGENT_ID: 'canary-agent-id', TOOL_TOKEN: process.env.TOOL_TOKEN, DASHBOARD_PASSWORD: 'canary-password-long' };
+  const previous = { key: process.env.BOLNA_API_KEY, agent: process.env.BOLNA_AGENT_ID };
+  process.env.BOLNA_API_KEY = canaries.BOLNA_API_KEY; process.env.BOLNA_AGENT_ID = canaries.BOLNA_AGENT_ID;
+  process.env.DASHBOARD_PASSWORD = canaries.DASHBOARD_PASSWORD;
+  try {
+    await withApp(async ({ base, db }) => {
+      const lead = newLead(db);
+      db.prepare("INSERT INTO calls (execution_id, lead_id, recording_url, transcript) VALUES ('exec-canary', ?, 'https://api.bolna.ai/recordings/call/exec-canary', 'user: hi')").run(lead);
+      const login = await signIn(base, canaries.DASHBOARD_PASSWORD);
+      const cookie = login.headers.get('set-cookie').split(';')[0];
+      const pages = ['/', '/login', '/api/overview', '/api/projects', '/api/leads', `/api/leads/${lead}`, '/api/calls', '/api/appointments', '/api/campaigns', '/healthz', '/nope'];
+      const seen = [login];
+      for (const p of pages) seen.push(await fetch(base + p, { headers: { cookie } }));
+      const failing = await fetch(`${base}/api/leads/${lead}/call`, { method: 'POST', headers: { ...DASHBOARD, cookie } });
+      seen.push(failing);
+      const everything = (await Promise.all(seen.map(async (r) => JSON.stringify([...r.headers]) + await r.text()))).join('\n');
+      for (const [name, value] of Object.entries(canaries)) assert.ok(!everything.includes(value), `${name} leaked`);
+      assert.ok(!everything.includes('exec-canary'), 'recording id leaked');
+      assert.ok(!everything.includes('recordings/call'), 'recording url leaked');
+    }, { fetchImpl: async () => new Response('{"message":"nope"}', { status: 400 }) });
+  } finally {
+    delete process.env.DASHBOARD_PASSWORD;
+    if (previous.key === undefined) delete process.env.BOLNA_API_KEY; else process.env.BOLNA_API_KEY = previous.key;
+    if (previous.agent === undefined) delete process.env.BOLNA_AGENT_ID; else process.env.BOLNA_AGENT_ID = previous.agent;
+  }
+});
+
+test('sign-in: nothing opens without it, and the cookie is locked down', async () => {
+  await withPassword(async ({ base }) => {
+    assert.equal((await fetch(`${base}/api/leads`)).status, 401);
+    assert.equal((await fetch(`${base}/api/leads`, { headers: { authorization: `Basic ${Buffer.from('admin:correct-horse-battery').toString('base64')}` } })).status, 401);
+    assert.equal((await fetch(`${base}/api/leads`, { headers: { cookie: 'pr_session=forged' } })).status, 401);
+    const home = await fetch(`${base}/`, { redirect: 'manual' });
+    assert.deepEqual([home.status, home.headers.get('location')], [302, '/login']);
+    assert.equal(home.headers.get('www-authenticate'), null);
+
+    assert.equal((await signIn(base, 'wrong')).status, 401);
+    const good = await signIn(base, 'correct-horse-battery');
+    assert.equal(good.status, 200);
+    const setCookie = good.headers.get('set-cookie');
+    assert.match(setCookie, /HttpOnly/);
+    assert.match(setCookie, /SameSite=Strict/);
+    assert.ok(!setCookie.includes('correct-horse-battery'));
+    const cookie = setCookie.split(';')[0];
+    assert.equal((await fetch(`${base}/api/leads`, { headers: { cookie } })).status, 200);
+
+    await fetch(`${base}/logout`, { method: 'POST', headers: { ...DASHBOARD, cookie } });
+    assert.equal((await fetch(`${base}/api/leads`, { headers: { cookie } })).status, 401, 'old session still works after sign out');
+  });
+});
+
+test('sign-in: guessing locks out, and the cookie is Secure over https', async () => {
+  await withPassword(async ({ base }) => {
+    for (let i = 0; i < 5; i++) assert.equal((await signIn(base, `guess${i}`)).status, 401);
+    assert.equal((await signIn(base, 'correct-horse-battery')).status, 429, 'correct password must wait out the lock too');
+  });
+  await withPassword(async ({ base }) => {
+    const res = await fetch(`${base}/login`, { method: 'POST', headers: { ...DASHBOARD, 'x-forwarded-proto': 'https' }, body: '{"password":"correct-horse-battery"}' });
+    assert.match(res.headers.get('set-cookie'), /Secure/);
+    assert.match(res.headers.get('strict-transport-security'), /max-age/);
+  });
+});
+
+test('cross-site requests are refused, signed in or not', async () => {
+  await withPassword(async ({ base }) => {
+    const cookie = (await signIn(base, 'correct-horse-battery')).headers.get('set-cookie').split(';')[0];
+    const attempt = (headers) => fetch(`${base}/api/samples/clear`, { method: 'POST', headers: { cookie, ...headers }, body: '{}' });
+    assert.equal((await attempt({})).status, 403, 'missing header');
+    assert.equal((await attempt({ ...DASHBOARD, origin: 'https://evil.example' })).status, 403, 'wrong origin');
+    assert.equal((await attempt({ ...DASHBOARD, origin: 'null' })).status, 403, 'sandboxed origin');
+    assert.equal((await attempt({ ...DASHBOARD, origin: base })).status, 200);
+    const preflight = await fetch(`${base}/api/samples/clear`, { method: 'OPTIONS', headers: { origin: 'https://evil.example' } });
+    assert.equal(preflight.headers.get('access-control-allow-origin'), null);
+  });
+});
+
+test('a foreign Host is refused, which blocks DNS rebinding', async () => {
+  await withApp(async ({ port }) => {
+    const status = await new Promise((resolve) => {
+      nodeHttp.get({ port, path: '/api/leads', headers: { Host: 'evil.example' } }, (r) => { r.resume(); resolve(r.statusCode); });
+    });
+    assert.equal(status, 403);
+  });
+});
+
+test('pages carry a strict policy, and scripts only run with the nonce', async () => {
+  await withApp(async ({ base }) => {
+    for (const page of ['/', '/login']) {
+      const res = await fetch(base + page);
+      const html = await res.text();
+      const csp = res.headers.get('content-security-policy');
+      const nonce = csp.match(/nonce-([^']+)/)[1];
+      assert.ok(html.includes(`<script nonce="${nonce}">`), page);
+      assert.equal(html.match(/<script/g).length, 1, page);
+      assert.ok(!/script-src[^;]*unsafe/.test(csp));
+      assert.ok(!/\son[a-z]+=/.test(html.replace(/<script[\s\S]*<\/script>/, '')), `inline handler in ${page}`);
+      assert.equal(res.headers.get('x-frame-options'), 'DENY');
+      assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+      assert.equal(res.headers.get('referrer-policy'), 'no-referrer');
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+    }
+    const a = (await fetch(`${base}/`)).headers.get('content-security-policy');
+    const b = (await fetch(`${base}/`)).headers.get('content-security-policy');
+    assert.notEqual(a, b, 'nonce must change per response');
+  });
+});
+
+test('recordings stream through sign-in, and only from Bolna', async () => {
+  const asked = [];
+  const fetchImpl = async (url, o) => {
+    asked.push([url, o.headers.Range]);
+    return new Response('AUDIO', { status: 206, headers: { 'content-type': 'audio/mpeg', 'content-range': 'bytes 0-4/5' } });
+  };
+  await withPassword(async ({ base, db }) => {
+    const lead = newLead(db);
+    const insert = db.prepare('INSERT INTO calls (execution_id, lead_id, recording_url) VALUES (?, ?, ?)');
+    const good = insert.run('r1', lead, 'https://api.bolna.ai/recordings/call/r1').lastInsertRowid;
+    const evil = insert.run('r2', lead, 'http://169.254.169.254/latest/meta-data').lastInsertRowid;
+    assert.equal((await fetch(`${base}/api/calls/${good}/recording`)).status, 401);
+    const cookie = (await signIn(base, 'correct-horse-battery')).headers.get('set-cookie').split(';')[0];
+    const res = await fetch(`${base}/api/calls/${good}/recording`, { headers: { cookie, range: 'bytes=0-4' } });
+    assert.deepEqual([res.status, res.headers.get('content-type'), await res.text()], [206, 'audio/mpeg', 'AUDIO']);
+    assert.deepEqual(asked, [['https://api.bolna.ai/recordings/call/r1', 'bytes=0-4']]);
+    assert.equal((await fetch(`${base}/api/calls/${evil}/recording`, { headers: { cookie } })).status, 404);
+    assert.equal(asked.length, 1, 'must not fetch a non-Bolna URL');
+    const calls = await (await fetch(`${base}/api/calls`, { headers: { cookie } })).json();
+    const mine = calls.find((c) => c.id === Number(good));
+    assert.equal(mine.has_recording, true);
+    assert.ok(!('recording_url' in mine) && !('execution_id' in mine));
+  }, { fetchImpl });
+});
+
+test('the database and generated files are private to this user', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'propreach-test-'));
+  try {
+    const file = path.join(dir, 'p.db');
+    openDb(file).close();
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a public server refuses a weak password and listens only locally by default', () => {
+  const run = (env) => spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/server.js'],
+    { env: { ...process.env, PORT: '0', DB_PATH: ':memory:', ...env }, encoding: 'utf8', timeout: 4000 });
+  assert.equal(run({ PUBLIC_URL: 'https://x.dev', DASHBOARD_PASSWORD: 'admin123' }).status, 1);
+  assert.equal(run({ PUBLIC_URL: 'https://x.dev', DASHBOARD_PASSWORD: '' }).status, 1);
+  assert.equal(config.host, process.env.HOST || '127.0.0.1');
+});
+
+test('sign-in works through the public tunnel address', async () => {
+  process.env.PUBLIC_URL = 'https://demo.trycloudflare.com';
+  try {
+    await withPassword(async ({ port }) => {
+      const tunnelled = (options, body) => new Promise((resolve) => {
+        const req = nodeHttp.request({ port, ...options, headers: { Host: 'demo.trycloudflare.com', 'x-forwarded-proto': 'https', ...options.headers } }, (r) => {
+          r.resume(); r.on('end', () => resolve(r));
+        });
+        req.end(body);
+      });
+      const origin = { Origin: 'https://demo.trycloudflare.com', ...DASHBOARD };
+      const login = await tunnelled({ method: 'POST', path: '/login', headers: origin }, '{"password":"correct-horse-battery"}');
+      assert.equal(login.statusCode, 200);
+      assert.match(login.headers['set-cookie'][0], /Secure/);
+      const cookie = login.headers['set-cookie'][0].split(';')[0];
+      assert.equal((await tunnelled({ path: '/api/leads', headers: { cookie } })).statusCode, 200);
+      assert.equal((await tunnelled({ method: 'POST', path: '/api/samples/clear', headers: { ...origin, cookie } }, '{}')).statusCode, 200);
+    });
+  } finally { process.env.PUBLIC_URL = ''; }
 });

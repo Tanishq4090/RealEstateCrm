@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · PropReach AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23185c4e'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:#f6f5f1;color:#1c2321;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{width:min(360px,100%);background:#fff;border:1px solid #e4e2db;border-radius:14px;padding:26px}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}p{margin:0 0 18px;color:#66706c}
+label{display:block;font-size:13px;color:#66706c;margin-bottom:12px}
+input{width:100%;margin-top:3px;padding:9px 10px;border:1px solid #8c8a82;border-radius:8px;font:inherit;color:#1c2321}
+button{width:100%;padding:9px 13px;border:0;border-radius:8px;background:#185c4e;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}:focus-visible{outline:2px solid #185c4e;outline-offset:1px}
+#error{color:#b5381f;margin:12px 0 0;min-height:22px;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>PropReach AI</h1>
+  <p>Sign in to your dashboard.</p>
+  <form id="form">
+    <input type="hidden" name="username" value="admin" autocomplete="username">
+    <label>Password<input id="password" type="password" required autofocus autocomplete="current-password"></label>
+    <button id="submit">Sign in</button>
+  </form>
+  <div id="error" role="alert"></div>
+</main>
+<script>
+const MESSAGES = { 401: 'That password is not right.', 429: 'Too many attempts. Try again in 15 minutes.' };
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = document.getElementById('submit');
+  const error = document.getElementById('error');
+  button.disabled = true;
+  error.textContent = '';
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'x-propreach-client': 'dashboard' },
+      body: JSON.stringify({ password: document.getElementById('password').value }),
+    });
+    if (res.ok) { location.replace('/'); return; }
+    error.textContent = MESSAGES[res.status] ?? 'Could not sign in. Try again.';
+  } catch {
+    error.textContent = 'Could not reach the server.';
+  }
+  button.disabled = false;
+});
+</script>
+</body>
+</html>

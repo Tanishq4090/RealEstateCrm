@@ -44,7 +44,7 @@ Watch the dashboard during the simulation: a banner shows the live call, a booki
 ## Connect real calling
 
 1. Create a key at [platform.bolna.ai](https://platform.bolna.ai) and add wallet credit.
-2. Add `BOLNA_API_KEY` and `DASHBOARD_PASSWORD` to `.env`. See `.env.example` for every option. `npm start` already created this file, so add to it rather than copying over it.
+2. Add `BOLNA_API_KEY` and a `DASHBOARD_PASSWORD` of at least 12 characters to `.env`. See `.env.example` for every option. `npm start` already created this file, so add to it rather than copying over it.
 3. Start the server with `npm start`, then expose it: `cloudflared tunnel --url http://localhost:3000`.
 4. Set `PUBLIC_URL` in `.env` to the tunnel URL.
 5. Run `npm run setup-agent`, then restart `npm start`.
@@ -59,9 +59,20 @@ If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. 
 - An opt-out goes straight to the do-not-call list and cancels that buyer's appointments. A post-call extraction catches any opt-out the live agent missed.
 - Campaigns skip anyone called in the last 24 hours or holding a booking.
 - A booking is confirmed to a buyer only after the reservation succeeds.
-- The server will not start with a public URL and no dashboard password.
 - Sample leads use numbers that cannot exist, and the dialler refuses them.
 - Calling hours are set to 9 AM to 9 PM recipient time through Bolna's calling guardrails, which the server relies on rather than enforcing itself. Confirm this and sender registration against current TRAI rules before calling real prospects.
+
+## Security
+
+- Your Bolna key stays on the server. Only the server calls Bolna, and no page or API response contains the key.
+- The dashboard password crosses the network once, at sign-in. After that the browser holds a random session id in an `HttpOnly`, `SameSite=Strict` cookie, which expires after 12 hours.
+- The server will not start with a public URL and a password under 12 characters. Five wrong passwords lock that visitor out for 15 minutes.
+- Bolna serves recordings to anyone holding the URL, so the URL never reaches the browser. Audio streams through a signed-in route.
+- Cross-site requests are refused, and only this machine and `PUBLIC_URL` may reach the dashboard. A strict Content Security Policy blocks injected scripts.
+- The agent's tools and the webhook use separate secret tokens, so a leaked webhook URL cannot call the tools.
+- By default the server listens only on this machine. Set `HOST=0.0.0.0` when hosting.
+
+Secrets live in `.env`, which git ignores. If a key is ever exposed, replace it in `.env` and restart.
 
 ## Known limits
 

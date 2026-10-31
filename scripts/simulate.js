@@ -14,7 +14,11 @@ const tool = async (name, args) => {
 const hook = (event) => fetch(`${base}/webhooks/bolna?token=${config.webhookToken}`, { method: 'POST', body: JSON.stringify(event) });
 const pause = () => new Promise((r) => setTimeout(r, Number(process.env.SIM_PAUSE_MS ?? 1500))); // long enough to watch the dashboard
 
-const headers = config.dashboardPassword ? { Authorization: `Basic ${Buffer.from(`admin:${config.dashboardPassword}`).toString('base64')}` } : {};
+const headers = {};
+if (config.dashboardPassword) {
+  const res = await fetch(`${base}/login`, { method: 'POST', headers: { 'x-propreach-client': 'dashboard' }, body: JSON.stringify({ password: config.dashboardPassword }) });
+  headers.cookie = res.headers.get('set-cookie')?.split(';')[0];
+}
 const leads = await (await fetch(`${base}/api/leads`, { headers })).json();
 const lead = leads.find((l) => l.phone === '+910000000001');
 if (!lead) { console.error('Sample lead Rahul is gone. Stop the server, run `npm run reset`, and start it again.'); process.exit(1); }

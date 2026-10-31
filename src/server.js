@@ -1,21 +1,86 @@
 import http from 'node:http';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
+import { createAuth, isHttps, same } from './auth.js';
 import { config, ROOT } from './config.js';
 import { allProjects, clearSamples, company, openDb } from './db.js';
 import { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign } from './calls.js';
 import { TOOL_HANDLERS } from './tools.js';
 import { normalizePhone, parseCsv } from './parse.js';
 
-const sha = (s) => createHash('sha256').update(String(s)).digest();
-const same = (a, b) => timingSafeEqual(sha(a), sha(b));
 const MAX_BODY = 2_000_000;
+const CLIENT_HEADER = 'x-propreach-client';
+const MIN_PASSWORD = 12;
 
-function send(res, status, body, type = 'application/json') {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+function baseHeaders(req) {
+  return {
+    'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Resource-Policy': 'same-origin',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    ...(isHttps(req) && { 'Strict-Transport-Security': 'max-age=31536000' }),
+  };
+}
+
+function send(res, status, body, type = 'application/json', extra = {}) {
+  res.writeHead(status, { ...baseHeaders(res.req), 'Content-Type': type, ...extra });
   res.end(type === 'application/json' ? JSON.stringify(body) : body);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, { ...baseHeaders(res.req), Location: location });
+  res.end();
+}
+
+/** Serves a page whose one inline script is allowed by a fresh nonce, so injected scripts cannot run. */
+function sendPage(res, file) {
+  const nonce = randomBytes(16).toString('base64');
+  const html = readFileSync(path.join(ROOT, 'public', file), 'utf8').replace('<script>', `<script nonce="${nonce}">`);
+  send(res, 200, html, 'text/html; charset=utf-8', {
+    'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src data:; media-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+  });
+}
+
+/** Blocks DNS rebinding: a hostile site pointing its own domain at this machine. */
+function hostAllowed(req) {
+  const host = (req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
+  const allowed = ['localhost', '127.0.0.1', '[::1]'];
+  if (config.publicUrl) allowed.push(new URL(config.publicUrl).hostname);
+  return allowed.includes(host);
+}
+
+/** Blocks cross-site requests. Other sites cannot set this header without a CORS approval we never give. */
+function fromDashboard(req) {
+  if (req.headers[CLIENT_HEADER] !== 'dashboard') return false;
+  const { origin } = req.headers;
+  if (!origin) return true;
+  try { return new URL(origin).host === req.headers.host; } catch { return false; }
+}
+
+const isRecordingUrl = (url) => {
+  try { const u = new URL(url); return u.protocol === 'https:' && u.hostname === 'api.bolna.ai'; } catch { return false; }
+};
+
+// Bolna serves recordings to anyone holding the URL, and the URL contains the execution id.
+// Neither goes to the browser, which streams audio through the signed-in route instead.
+const publicCall = ({ recording_url, execution_id, ...call }) => ({ ...call, has_recording: isRecordingUrl(recording_url) });
+
+async function streamRecording(db, req, res, id, fetchImpl) {
+  const url = db.prepare('SELECT recording_url FROM calls WHERE id = ?').get(id)?.recording_url;
+  if (!isRecordingUrl(url)) return send(res, 404, { error: 'No recording' });
+  const abort = new AbortController();
+  res.on('close', () => abort.abort());
+  const upstream = await fetchImpl(url, { signal: abort.signal, headers: req.headers.range ? { Range: req.headers.range } : {} });
+  if (!upstream.ok || !upstream.body) return send(res, 404, { error: 'No recording' });
+  const passed = {};
+  for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
+    const value = upstream.headers.get(name);
+    if (value) passed[name] = value;
+  }
+  res.writeHead(upstream.status, { ...baseHeaders(req), ...passed });
+  Readable.fromWeb(upstream.body).on('error', () => res.destroy()).pipe(res);
 }
 
 async function readBody(req) {
@@ -32,14 +97,6 @@ function parseJson(raw) {
   if (!raw) return {};
   try { return JSON.parse(raw); }
   catch { throw Object.assign(new Error('Invalid JSON'), { status: 400 }); }
-}
-
-function dashboardAllowed(req) {
-  if (!config.dashboardPassword) return true;
-  const [scheme, value] = (req.headers.authorization ?? '').split(' ');
-  if (scheme !== 'Basic' || !value) return false;
-  const decoded = Buffer.from(value, 'base64').toString();
-  return same(decoded.slice(decoded.indexOf(':') + 1), config.dashboardPassword);
 }
 
 function addLead(db, row) {
@@ -71,6 +128,7 @@ function overview(db) {
     byStatus,
     hasSamples: one('SELECT COUNT(*) n FROM leads WHERE is_sample = 1') > 0,
     calling: Boolean(config.bolnaKey && config.agentId),
+    signInRequired: Boolean(config.dashboardPassword),
     company: company(db),
   };
 }
@@ -112,7 +170,7 @@ function saveProject(db, b) {
   }
 }
 
-async function api(db, req, res, pathname) {
+async function api(db, req, res, pathname, fetchImpl) {
   const route = `${req.method} ${pathname}`;
   const id = Number(pathname.split('/')[3]);
 
@@ -136,21 +194,22 @@ async function api(db, req, res, pathname) {
   if (/^GET \/api\/leads\/\d+$/.test(route)) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
     if (!lead) return send(res, 404, { error: 'Lead not found' });
-    return send(res, 200, { ...lead, calls: db.prepare(LEAD_DETAIL.calls).all(id), appointments: db.prepare(LEAD_DETAIL.appointments).all(id) });
+    return send(res, 200, { ...lead, calls: db.prepare(LEAD_DETAIL.calls).all(id).map(publicCall), appointments: db.prepare(LEAD_DETAIL.appointments).all(id) });
   }
   if (/^POST \/api\/leads\/\d+\/call$/.test(route)) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
     if (!lead) return send(res, 404, { error: 'Lead not found' });
     const result = await dialLead(db, lead);
-    return send(res, result.ok ? 200 : 400, result);
+    return send(res, result.ok ? 200 : 400, result.ok ? { ok: true } : { ok: false, error: result.error });
   }
 
   if (route === 'GET /api/calls') {
     return send(res, 200, db.prepare(`SELECT c.*, l.name lead, l.phone, l.status lead_status, m.name campaign,
         COALESCE(p.name, l.interested_project) project
       FROM calls c LEFT JOIN leads l ON l.id = c.lead_id LEFT JOIN campaigns m ON m.id = c.campaign_id
-      LEFT JOIN projects p ON p.id = m.project_id ORDER BY c.id DESC LIMIT 200`).all());
+      LEFT JOIN projects p ON p.id = m.project_id ORDER BY c.id DESC LIMIT 200`).all().map(publicCall));
   }
+  if (/^GET \/api\/calls\/\d+\/recording$/.test(route)) return streamRecording(db, req, res, id, fetchImpl);
   if (route === 'GET /api/appointments') {
     return send(res, 200, db.prepare(`SELECT a.*, l.name lead, l.phone, l.pref_bhk, l.budget_lakh, l.summary, p.name project, r.name rep
       FROM appointments a JOIN leads l ON l.id = a.lead_id LEFT JOIN projects p ON p.id = a.project_id LEFT JOIN reps r ON r.id = a.rep_id
@@ -193,8 +252,8 @@ async function api(db, req, res, pathname) {
   return send(res, 404, { error: 'Not found' });
 }
 
-export function createApp(db) {
-  const page = () => readFileSync(path.join(ROOT, 'public/index.html'));
+export function createApp(db, { fetchImpl = fetch } = {}) {
+  const auth = createAuth();
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -218,14 +277,27 @@ export function createApp(db) {
         return send(res, 200, handleExecutionEvent(db, parseJson(await readBody(req))));
       }
 
-      if (!dashboardAllowed(req)) {
-        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="PropReach"' });
-        return res.end('Authentication required');
+      // Everything below is the dashboard, reached by a person in a browser.
+      if (!hostAllowed(req)) return send(res, 403, { error: 'Forbidden' });
+      if (req.method !== 'GET' && !fromDashboard(req)) return send(res, 403, { error: 'Forbidden' });
+
+      if (pathname === '/login') {
+        if (req.method === 'GET') return auth.isSignedIn(req) ? redirect(res, '/') : sendPage(res, 'login.html');
+        if (req.method !== 'POST') return send(res, 404, { error: 'Not found' });
+        const { status, cookie } = auth.signIn(req, parseJson(await readBody(req)).password);
+        return send(res, status, { ok: status === 200 }, 'application/json', cookie ? { 'Set-Cookie': cookie } : {});
       }
-      if (pathname.startsWith('/api/')) return await api(db, req, res, pathname);
-      if (req.method === 'GET' && pathname === '/') return send(res, 200, page(), 'text/html; charset=utf-8');
+      if (req.method === 'POST' && pathname === '/logout') {
+        return send(res, 200, { ok: true }, 'application/json', { 'Set-Cookie': auth.signOut(req) });
+      }
+      if (!auth.isSignedIn(req)) {
+        return pathname.startsWith('/api/') ? send(res, 401, { error: 'Sign in required' }) : redirect(res, '/login');
+      }
+      if (pathname.startsWith('/api/')) return await api(db, req, res, pathname, fetchImpl);
+      if (req.method === 'GET' && pathname === '/') return sendPage(res, 'index.html');
       return send(res, 404, { error: 'Not found' });
     } catch (err) {
+      if (err.name === 'AbortError' || res.headersSent) return res.destroy();
       if (!err.status) console.error(err);
       return send(res, err.status ?? 500, { ok: false, error: err.status ? err.message : 'Internal error', message: 'Something went wrong on our side. Offer a callback from the sales team.' });
     }
@@ -233,14 +305,14 @@ export function createApp(db) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (config.publicUrl && !config.dashboardPassword) {
-    console.error('Set DASHBOARD_PASSWORD: PUBLIC_URL makes this dashboard public.');
+  if (config.publicUrl && config.dashboardPassword.length < MIN_PASSWORD) {
+    console.error(`Set DASHBOARD_PASSWORD to at least ${MIN_PASSWORD} characters: PUBLIC_URL makes this dashboard public.`);
     process.exit(1);
   }
   const db = openDb(config.dbPath);
   // A restart ends the dialling loop. Never resume it silently.
   db.prepare("UPDATE campaigns SET status = 'interrupted' WHERE status = 'running'").run();
-  createApp(db).listen(config.port, () => {
+  createApp(db).listen(config.port, config.host, () => {
     console.log(`PropReach dashboard: http://localhost:${config.port}`);
     console.log(`Portfolio: ${portfolioBrief(db)}`);
     if (!config.bolnaKey) console.log('BOLNA_API_KEY not set: dashboard works, calling is off.');
