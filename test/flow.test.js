@@ -6,7 +6,7 @@ process.env.TOOL_TOKEN = 'test-token';
 for (const name of ['BOLNA_API_KEY', 'BOLNA_AGENT_ID', 'DASHBOARD_PASSWORD', 'PUBLIC_URL', 'BOLNA_FROM_NUMBER']) process.env[name] = '';
 const { openDb, clearSamples } = await import('../src/db.js');
 const { addDays, nextWeekday, normalizePhone, isDialable, parseBudgetLakh, parseBhk, parseCsv, parseTime, clean, todayIST } = await import('../src/parse.js');
-const { bookVisit, checkSlots, getProjectDetails, scheduleCallback, searchProjects, updateLead } = await import('../src/tools.js');
+const { bookVisit, checkSlots, doNotCall, getProjectDetails, scheduleCallback, searchProjects, updateLead } = await import('../src/tools.js');
 const { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign } = await import('../src/calls.js');
 const { buildAgent, SYSTEM_PROMPT, WELCOME, keywordsFor } = await import('../src/agent-config.js');
 const { createApp } = await import('../src/server.js');
@@ -205,7 +205,7 @@ test('agent config: disclosure, tools and parameters line up', () => {
   const a = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't' });
   assert.match(a.agent_config.agent_welcome_message, /AI assistant/);
   const { tools, tools_params } = a.agent_config.tasks[0].tools_config.api_tools;
-  assert.deepEqual(tools.map((x) => x.name), ['book_visit', 'schedule_callback']);
+  assert.deepEqual(tools.map((x) => x.name), ['do_not_call', 'book_visit', 'schedule_callback']);
   for (const t of tools) {
     assert.equal(t.key, 'custom_task');
     assert.deepEqual(Object.keys(tools_params[t.name].param).sort(), Object.keys(t.parameters.properties).sort());
@@ -451,7 +451,7 @@ test('agent stays inside the limits Bolna enforces', () => {
   assert.ok(!JSON.stringify(tools.api_tools).includes('hook'));
   const plain = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', voiceProfile: 'default' }).agent_config.tasks[0].tools_config;
   assert.equal(plain.multilingual_config, undefined);
-  assert.equal(plain.api_tools.tools[0].pre_call_message, 'One second.');
+  assert.equal(plain.api_tools.tools[1].pre_call_message, 'One second.');
 });
 
 test('scorecard and funnel count people, not attempts', async () => {
@@ -813,7 +813,7 @@ test('one transcriber and one voice cover English, Hindi and Hinglish', () => {
 test('the prompt and tools stay compact, because they cost time on every turn', () => {
   const { tools } = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w' }).agent_config.tasks[0].tools_config.api_tools;
   assert.ok(SYSTEM_PROMPT.length < 3800, `prompt is ${SYSTEM_PROMPT.length} characters`);
-  assert.ok(JSON.stringify(tools).length < 1100, `tools are ${JSON.stringify(tools).length} characters`);
+  assert.ok(JSON.stringify(tools).length < 1400, `tools are ${JSON.stringify(tools).length} characters`);
   for (const word of ['Hinglish', 'ending the call', 'OTP', 'Devanagari']) assert.ok(SYSTEM_PROMPT.includes(word), word);
 });
 
@@ -938,4 +938,25 @@ test('a promise made on the call survives a callback with no agreed time', () =>
 test('calls stay inside the hours TRAI leaves on by default', () => {
   const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: [] });
   assert.deepEqual(agent.agent_config.calling_guardrails, { call_start_hour: 10, call_end_hour: 21 });
+});
+
+test('an opt-out during the call takes effect at once and cancels bookings', () => {
+  const db = fresh();
+  const lead = newLead(db);
+  assert.equal(bookVisit(db, { lead_id: lead, project: 'Whitefield', date: saturday(), time: '2 PM' }).confirmed, true);
+  assert.equal(doNotCall(db, { lead_id: String(lead) }).saved, true);
+  const l = leadRow(db, lead);
+  assert.deepEqual([l.do_not_call, l.status, l.next_action], [1, 'not_interested', 'None']);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM appointments WHERE lead_id = ? AND status = 'scheduled'").get(lead).n, 0);
+  assert.equal(doNotCall(db, { lead_id: '999999' }).ok, false);
+});
+
+test('a dashboard other machines can reach will not start without a strong password', () => {
+  const start = (env) => spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/server.js'],
+    { env: { PATH: process.env.PATH, DB_PATH: ':memory:', PORT: '0', BOLNA_API_KEY: '', DASHBOARD_PASSWORD: '', PUBLIC_URL: '', TOOL_TOKEN: 't', ...env }, timeout: 3000, encoding: 'utf8' });
+  const refused = start({ HOST: '0.0.0.0' });
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /DASHBOARD_PASSWORD/);
+  assert.equal(start({ HOST: '0.0.0.0', DASHBOARD_PASSWORD: 'long-enough-password' }).status, null, 'a strong password lets it run until the timeout');
+  assert.equal(start({ HOST: '127.0.0.1' }).status, null, 'local use still needs no password');
 });

@@ -37,7 +37,7 @@ EDGE CASES
 - Asked if you are a robot: say yes, you are an AI, and offer a person.
 - Wants a person, a discount or payment details: never agree a number, call schedule_callback.
 - Busy, or someone else answered: ask when once, call schedule_callback, end. If vague, use the first day they named at 6 PM.
-- Wrong number or "don't call": apologise, confirm they won't be called, end.
+- Wrong number or "don't call": call do_not_call, apologise, confirm they won't be called, end.
 - Not interested: thank them and end. One clear no is enough.
 - Abuse, threats or sexual talk: never mirror it or lecture. First time, ask once to keep it respectful. If it repeats, or on any threat, say you are ending the call, end.
 - Angry but not abusive: apologise once, stop selling, offer a person.
@@ -55,9 +55,12 @@ const str = (description) => ({ type: 'string', description });
 const leadId = str('Customer record id.');
 const isoDate = str('YYYY-MM-DD.');
 
-// Only actions that change something. Everything Asha learns is read from the transcript after the call,
-// so saving a lead never makes the buyer wait through another silence before goodbye.
+// Only actions that change something. Everything else Asha learns is read from the transcript after the call,
+// so saving a lead never makes the buyer wait. An opt-out keeps its own tool because it must not rest on one layer.
 const TOOLS = [
+  { name: 'do_not_call', pre_call_message: { en: 'Sure.', hi: 'जी।' },
+    description: 'They said not to call again, or it is the wrong number.',
+    params: { lead_id: leadId } },
   { name: 'book_visit', pre_call_message: { en: 'One second.', hi: 'एक सेकंड।' },
     description: 'Book a visit once they pick a project, day and time. Booking the same project again moves that visit. If the time is taken it returns other times.',
     params: { lead_id: leadId, project: str('Project name.'), date: isoDate, time: str('Like "11:30 AM".') } },

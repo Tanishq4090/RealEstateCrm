@@ -331,8 +331,9 @@ export function createApp(db, { fetchImpl = fetch } = {}) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (config.publicUrl && config.dashboardPassword.length < MIN_PASSWORD) {
-    console.error(`Set DASHBOARD_PASSWORD to at least ${MIN_PASSWORD} characters: PUBLIC_URL makes this dashboard public.`);
+  const reachable = config.publicUrl || !['127.0.0.1', 'localhost', '::1'].includes(config.host);
+  if (reachable && config.dashboardPassword.length < MIN_PASSWORD) {
+    console.error(`Set DASHBOARD_PASSWORD to at least ${MIN_PASSWORD} characters: other machines can reach this dashboard.`);
     process.exit(1);
   }
   const db = openDb(config.dbPath);

@@ -34,10 +34,10 @@ Developers already pay channel partners to sell homes. This estimate only shows 
 |---|---|---|
 | Homes sold in the top 7 cities, 2025 | Over ₹6 lakh crore | Medium, published before the year ended |
 | Commission rate | 1% to 3% | Low, trade sources only, no audited figure |
-| Share sold through outside partners | 42% to 49% | Low to medium, from a summary of a company-commissioned report |
-| **Commission pool** | **About ₹2,520 crore to ₹8,820 crore a year** | Low |
+| Share sold through outside partners | 49% in 2025 | Low to medium, from a summary of a company-commissioned report |
+| **Commission pool** | **About ₹2,940 crore to ₹8,820 crore a year** | Low |
 
-The base TAM of ₹780 crore is about 9% to 31% of that pool.
+The base TAM of ₹780 crore is about 9% to 27% of that pool.
 
 ## Unit economics
 
@@ -47,17 +47,18 @@ The base TAM of ₹780 crore is about 9% to 31% of that pool.
 | Cost of an average real call | About ₹8.20 | 90 seconds at that rate |
 | Cost of 5,000 minutes | About ₹27,350 | Measured rate |
 | Monthly price | ₹50,000 | Planning assumption |
+| Price per included minute | ₹10 | ₹50,000 ÷ 5,000 |
 | **Gross profit** | **About ₹22,650 a month, or 45%** | Before support and sales costs |
 
-Five calls is a small sample. They were made before the move to the current voice, so the rate needs measuring again. Bolna's lower volume tiers may help, but it does not publish its telephony and platform fees, so no saving is counted here.
+Five calls is a small sample, and the figure is what Bolna billed. They were made before the move to the current voice, so the rate needs measuring again. Bolna's lower volume tiers may help, but it does not publish its telephony and platform fees, so no saving is counted here.
 
 ## Honest comparison with a telecaller
 
-Asha is not dramatically cheaper per minute in India, and the pitch does not pretend she is.
+Asha is not cheaper per minute in India. At the planning price she costs the builder up to 3.8 times a telecaller's wage per talk minute, and the pitch does not pretend otherwise.
 
 | | Telecaller | Asha |
 |---|---|---|
-| Cost per talk minute | About ₹2.60 to ₹7, wage only | About ₹5.47, measured |
+| Cost per talk minute | About ₹2.60 to ₹7, wage only | About ₹5.47 to us, ₹10 to the builder |
 | Calls at once | One | As many as the Bolna plan allows |
 | Knows every project on every call | Depends on the person | Yes, by design |
 | Starts on a new list | When someone is free | As soon as the campaign is launched |
@@ -65,18 +66,18 @@ Asha is not dramatically cheaper per minute in India, and the pitch does not pre
 
 The wage figure takes Indeed's ₹16,383 a month, over 26 working days, at 4 hours to 1.5 hours of talk time a day. The talk time is an assumption, and the wage leaves out hiring, training, management and seats.
 
-**The value is speed and coverage.** Each extra sale matters far more than the minutes: at 1% of an average ₹1.5 crore home (₹6 lakh crore ÷ 3.96 lakh homes), one sale's commission of ₹1.5 lakh equals about 9,000 three-minute calls.
+**The value is speed and coverage.** Each extra sale matters far more than the minutes: at 1% of an average ₹1.5 crore home (₹6 lakh crore ÷ 3.96 lakh homes), one sale's commission of ₹1.5 lakh pays for three months of the plan.
 
 ## Why now
 
-1. **Voice got cheap enough.** Our real calls cost about 6¢ a minute, all in.
-2. **Indian voices got good enough.** Sarvam's Bulbul v4 Flash mixes Hindi and English natively, which is how many Indian buyers actually speak.
-3. **The rules got clearer.** TRAI's September 2026 regulations plainly cover AI voice calling, so a product built around consent and the right number series has a defensible path.
+1. **Voice got cheap enough.** Our real calls were billed at about 6¢ a minute.
+2. **Indian voices arrived.** Sarvam's Bulbul v4 Flash is built to mix Hindi and English, which is how many Indian buyers actually speak.
+3. **The rules got clearer.** On our reading, TRAI's September 2026 regulations cover AI voice calling, so a product built around consent and the right number series has a defensible path.
 
 ## How it reaches builders
 
 1. Start with mid-sized developers in Bengaluru, NCR, Pune and Mumbai, where enquiry volume is high and sales teams are small.
-2. Run a pilot on one project's old enquiries, with the builder's consent records, and report the visits booked.
+2. Run a pilot on one project's fresh enquiries, inside the 7-day window, and report the visits booked.
 3. Expand to the full portfolio, then sell through CREDAI city chapters and channel partners.
 
 ## What could prove this wrong

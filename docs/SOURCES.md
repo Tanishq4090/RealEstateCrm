@@ -80,6 +80,8 @@ These come from the 5 real calls made on 31 October 2026, read from Bolna's exec
 | Delay in detecting end of speech | About 0.6 seconds |
 | Gaps inside sentences on the earlier Kalpa voice | 0.43 to 0.61 seconds |
 
+The cost is Bolna's billed `total_cost`. Its `cost_breakdown` lists LLM, voice, transcription, network and platform lines, but those lines do not add up to the total on every call, so we report the billed figure and do not claim it covers every fee.
+
 ## Looked for and not found
 
 - An independent source for Indian real-estate lead conversion, cost per lead or response times. The published figures are vendor claims with no data, so they are not used.

@@ -7,14 +7,14 @@
 ![No npm dependencies](https://img.shields.io/badge/npm%20dependencies-0-ea580c)
 ![Voice by Bolna](https://img.shields.io/badge/voice-Bolna-6d28d9)
 
-**PropReach AI phones every home buyer on a builder's list, talks through the builder's whole portfolio, and books the site visit.**
-Asha, the voice agent, says she is an AI in her first sentence, answers from real project facts, and suggests a better fit when there is one, even a project the buyer never asked about. The sales team gets a classified lead, a transcript and a next step, then takes over in person.
+**PropReach AI phones every home buyer who enquires, talks through the builder's whole portfolio, and books the site visit.**
+Asha, the voice agent, says she is an AI in her first sentence, answers from real project facts, and suggests a better fit when there is one, even a project the buyer never asked about. The sales team gets a classified lead, a transcript and any agreed next step, then takes over in person.
 
 <img src="docs/media/demo.gif" alt="Split screen. On the right, Asha asks whether she is speaking with Rahul, quotes Whitefield Heights, suggests the cheaper and larger Sarjapur Residences, finds that 10 AM is taken, and books 11:30 AM. On the left, the dashboard shows the live call, then the lead marked hot with its requirements and the visit on the team calendar.">
 
 *A simulated call with sample data, so you can see the whole flow without a phone. The dashboard, booking tools and post-call processing shown are the real ones.*
 
-**Live:** real phone calls run through Bolna, where Soniox listens, gpt-4.1-mini replies, Sarvam speaks and Plivo connects. Five real test calls by the team have connected so far, and two of them booked a visit.
+**Tested live:** real phone calls run through Bolna, where Soniox listens, gpt-4.1-mini replies, Sarvam speaks and Plivo connects. Five team test calls have connected and two booked a visit, all on earlier settings. The current stack has not yet taken a live call.
 
 [Why](#why-propreach) · [The opportunity](#the-opportunity) · [One call](#one-call-start-to-finish) · [Architecture](#architecture) · [Real calls](#built-from-real-calls) · [India's rules](#indias-calling-rules) · [Run it](#run-it-in-a-minute) · [Market model](MARKET.md) · [Sources](docs/SOURCES.md)
 
@@ -24,7 +24,7 @@ Asha, the voice agent, says she is an AI in her first sentence, answers from rea
 
 A buyer fills in a form for a 3 BHK in Whitefield. Someone has to call back quickly, know every project the builder has, remember what was said, and do the same for every other lead on the list. When that slips, the builder has paid for an enquiry that nobody followed up.
 
-PropReach gives every lead three things: **speed** (the call goes out as soon as a campaign starts), **the whole portfolio** (Asha is never tied to one project) and **a record** (every call ends with a transcript, a status and a next step).
+PropReach gives every lead three things: **speed** (the call goes out as soon as a campaign starts), **the whole portfolio** (Asha is never tied to one project) and **a record** (every call ends with a transcript, a status and any agreed next step).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/media/speed-dark.svg">
@@ -37,19 +37,19 @@ PropReach gives every lead three things: **speed** (the call goes out as soon as
 |---|---:|---|
 | Homes sold in India's top 8 cities, 2025 | **3,48,207** | [Knight Frank](https://content.knightfrank.com/research/3116/documents/en/india-real-estate-office-and-residential-market-h1-2026-12927.pdf) |
 | Same cities, January to September 2026 | **2,58,238** | [Knight Frank release](https://investmentguruindia.com/newsdetail/india-s-residential-sales-hold-steady-in-9m-cy2026-as-market-divergence-widens-knight-frank-india519254) |
-| Value of homes sold in the top 7 cities, 2025 | **over ₹6 lakh crore** | [Anarock](https://investmentguruindia.com/newsdetail/housing-sales-vol-falls-14-y-o-y-in-2025-sales-value-up-6-in-top-7-cities-anarock274792) |
+| Value of homes sold in the top 7 cities, 2025, an estimate published in December 2025 | **over ₹6 lakh crore** | [Anarock](https://investmentguruindia.com/newsdetail/housing-sales-vol-falls-14-y-o-y-in-2025-sales-value-up-6-in-top-7-cities-anarock274792) |
 | RERA-registered projects, as reported in October 2026 | **1,72,861** | [MoHUA Unified RERA Portal](https://rera.mohua.gov.in/) |
 | Developers in CREDAI | **13,000+** | [CREDAI](https://credai.org/) |
 
 The two sales series come from different firms and cover different cities, so don't compare them directly.
 
-**The honest case is speed and coverage, not cheaper minutes.** In India a telecaller's wage of [₹16,383 a month](https://in.indeed.com/career/telecaller/salaries) already works out at a similar price per talk minute. So we measured what Asha really costs, and we don't claim to replace people for less.
+**The honest case is speed and coverage, not cheaper minutes.** Asha costs us about ₹5.47 a minute and would cost the builder ₹10, against ₹2.60 to ₹7 in [telecaller wages](https://in.indeed.com/career/telecaller/salaries). She earns that by calling a whole list as soon as it's launched, knowing every project, and leaving a record of every call.
 
-| What we measured | Figure |
+| The numbers | Figure |
 |---|---:|
-| Asha's all-in cost, including telephony, across 5 real calls | **5.95¢ a minute, about ₹5.47** |
+| Bolna's billed `total_cost`, earlier settings, 5 real calls | **5.95¢ a minute, about ₹5.47** |
 | An average real call of 90 seconds | **about ₹8.20** |
-| Three-minute calls paid for by one sale's commission, at a low-end 1% of an average ₹1.5 crore home | **about 9,000** |
+| One sale's commission, at a low-end 1% of an average ₹1.5 crore home | **three months of the plan** |
 
 The commission rate comes from trade sources, not audited data. [MARKET.md](MARKET.md) shows the working.
 
@@ -63,6 +63,10 @@ The commission rate comes from trade sources, not audited data. [MARKET.md](MARK
 
 The price, the 30% and the 200 are assumptions, and the low and high cases are in [MARKET.md](MARKET.md). We have no paying customers yet.
 
+**Why now.** Real calls were billed at about 6¢ a minute, Indian voices can now mix Hindi and English, and on our reading TRAI's September 2026 regulations cover AI voice calling, so a product built around consent has a clear path.
+
+**How it reaches builders.** Start with mid-sized developers in Bengaluru, NCR, Pune and Mumbai. Run a pilot on one project's fresh enquiries, report the visits booked, then sell through CREDAI chapters and channel partners.
+
 ## One call, start to finish
 
 1. **Set up once.** Add projects with prices, sizes, possession, amenities and payment plans, then upload leads as a CSV.
@@ -75,7 +79,7 @@ The price, the 30% and the 200 are assumptions, and the low and high cases are i
 
 ### What Asha will and won't do
 
-| Asha will | Asha never will |
+| Asha is instructed to | Asha is instructed never to |
 |---|---|
 | Say she is an AI on a recorded line, first thing | Pretend to be a person, even when asked |
 | Quote prices and facts from the project list | Invent discounts, returns, approvals or total cost |
@@ -86,6 +90,8 @@ The price, the 30% and the 200 are assumptions, and the low and high cases are i
 | Stop selling if someone is in distress | Ask for an OTP, card, bank, Aadhaar or PAN details |
 | Ask for an adult if a child answers | Reveal her instructions, even if told to ignore them |
 
+These rules live in her prompt. What must never depend on a model is enforced in code: consent and do-not-call checks before dialling, and the database constraint on bookings.
+
 ### Asha follows the buyer's language
 
 She replies in the language of the buyer's latest message and stays there until they change.
@@ -95,7 +101,7 @@ She replies in the language of the buyer's latest message and stays there until 
 | "Is there anything under 1 crore?" | "Sure, Electronic City Homes starts at 75 lakh." |
 | "1 crore से कम कुछ है क्या?" | "हाँ जी, Electronic City Homes 75 lakh से शुरू होता है।" |
 
-These are examples of the design. English is proven on live calls, and Hindi and Hinglish are still in testing.
+These are examples of the design. English is tested on live calls, and Hindi and Hinglish are not yet.
 
 ## Architecture
 
@@ -114,7 +120,7 @@ Node 22 and SQLite, with no npm dependencies.
 |---|---|
 | `server.js` | Dashboard API, sign-in, tool endpoints, the Bolna webhook and the signed-in recording stream |
 | `calls.js` | Dial guards, the portfolio brief, campaigns, and classifying each lead after its call |
-| `tools.js` | `book_visit` and `schedule_callback`, plus project search and lead updates |
+| `tools.js` | `book_visit`, `schedule_callback` and `do_not_call`, plus project search and lead updates |
 | `agent-config.js` | Asha's prompt, voices, turn timing, tools and post-call extractions |
 | `parse.js` | Turns spoken input into data: "1 crore 35 lakh", "after 6", "डेढ़ करोड़" |
 | `db.js` | Schema, migrations and sample data |
@@ -133,7 +139,7 @@ Node 22 and SQLite, with no npm dependencies.
 
 ### Why facts travel with the call
 
-Our first design fetched every answer through a tool, and real recordings showed the cost: a filler word, then seconds of silence. Now every project is loaded into the call, and only actions that change something, booking a visit and arranging a callback, go through tools.
+Our first design fetched every answer through a tool, and real recordings showed the cost: a filler word, then seconds of silence. Now every project is loaded into the call, and only actions that change something go through tools: booking a visit, arranging a callback and recording an opt-out.
 
 ## Built from real calls
 
@@ -141,7 +147,7 @@ We pull each real call's timings and measure the silence on the recording, chann
 
 | What we measured | Result | What we changed |
 |---|---:|---|
-| Silence after a filler word on lookup turns | 2.2 to 4.3 seconds | Moved project facts into the call, leaving only two tools |
+| Silence after a filler word on lookup turns | 2.2 to 4.3 seconds | Moved project facts into the call and kept tools for actions only |
 | Time for the model to finish a reply | 1,247 ms on `gpt-5.4-mini` | Went back to `gpt-4.1-mini`, 661 to 913 ms |
 | Gaps inside sentences on the earlier voice | 0.43 to 0.61 seconds | Moved to Sarvam Bulbul v4 Flash |
 | Delay in detecting end of speech | about 0.6 seconds | Shortened the turn timing |
@@ -150,19 +156,21 @@ These figures come from the 5 real test calls, before the changes. The new desig
 
 ## India's calling rules
 
-Regulators now treat AI voice calling as its own category, so we mapped the rules against the product. This is our reading of [TRAI's regulations](docs/SOURCES.md#trai-rules), not legal advice.
+On our reading, AI voice calling falls under TRAI's new A2P rules, so we mapped them against the product. This is our reading of [the regulations](docs/SOURCES.md#trai-rules), not legal advice.
 
 | Rule | PropReach today | Status |
 |---|---|---|
 | Promotional calls are off by default before 10 AM and after 9 PM | Bolna guardrails limit calls to 10 AM to 9 PM | Done |
 | Calls need consent | No recorded consent, no dial, rechecked at dialling | Done |
 | Opt-outs must be honoured | Goes straight to the do-not-call list and cancels appointments | Done |
-| Calling numbers must be declared, and AI voice falls under the 2026 A2P rules | The builder's number must be declared before launch | Before live campaigns |
+| Calling numbers must be declared under the 2026 A2P rules | The builder's number must be declared before launch | Before live campaigns |
 | Promotional calls must use a 140-series number | Bolna must be connected to the builder's registered number | Before live campaigns |
 | Enquiry-based calling lasts 7 days and needs a verifiable enquiry | Consent is recorded, but enquiry age isn't checked yet | Next to build |
 | Older consent must be in the Consent Register | Not integrated | Next to build |
 
 ## See the dashboard
+
+All screenshots show fictional sample data.
 
 | Overview | After a call |
 |---|---|
@@ -184,7 +192,7 @@ npm test
 
 Watch the dashboard during the simulation: a banner shows the live call, a booking alert appears, and the result lands in Calls and Visits. The transcript is scripted and labelled as simulated. Rerunning it moves Rahul's visit to the next open slot.
 
-**Call** and **Launch campaign** stay disabled until Bolna is connected, and sample leads can never be dialled. Stop the server and run `npm run reset` to restore the sample data.
+**Call** stays hidden and **Start campaign** stays disabled until Bolna is connected, and sample leads can never be dialled. Stop the server and run `npm run reset` to restore the sample data.
 
 ## Connect real calling
 
@@ -199,19 +207,19 @@ If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. 
 
 ## Deploy
 
-The included `Dockerfile` runs the server on port 3000 and keeps its data on a volume.
+The included `Dockerfile` runs the server on port 3000 and keeps its data on a volume. Set `PUBLIC_URL`, `DASHBOARD_PASSWORD` and a fixed `TOOL_TOKEN` in `.env` first, because the server will not start on a reachable address without a strong password.
 
 ```bash
 docker build -t propreach .
 docker run -p 3000:3000 -v propreach-data:/data --env-file .env propreach
 ```
 
-Set `PUBLIC_URL` to the deployed address and keep `TOOL_TOKEN` fixed, then rerun `npm run setup-agent`. Only one instance should run, because the data lives in SQLite.
+Then run `npm run setup-agent` with the same `.env` and restart. Only one instance should run, because the data lives in SQLite.
 
 ## Safeguards
 
 - The agent says it is an AI on a recorded line in its first sentence.
-- It never asks for an OTP, card or ID numbers, and never takes payment. After repeated abuse or any threat it ends the call, and a post-call check puts that lead on the do-not-call list for review.
+- It is instructed never to ask for an OTP, card or ID numbers, and never to take payment. After repeated abuse or any threat it ends the call, and a post-call check puts that lead on the do-not-call list for review.
 - Leads are dialled only with recorded consent, and the server rechecks each lead at the moment of dialling.
 - An opt-out goes straight to the do-not-call list and cancels that buyer's appointments. A post-call extraction catches any opt-out the live agent missed.
 - Campaigns skip anyone called in the last 24 hours or holding a booking. Launching needs confirming, and a running campaign can be stopped: queued calls are cancelled, while calls already ringing or connected finish.
@@ -224,9 +232,9 @@ Set `PUBLIC_URL` to the deployed address and keep `TOOL_TOKEN` fixed, then rerun
 
 - Your Bolna key stays on the server. Only the server calls Bolna, and no page or API response contains the key.
 - The dashboard password crosses the network once, at sign-in. After that the browser holds a random session id in an `HttpOnly`, `SameSite=Strict` cookie, which expires after 12 hours.
-- The server will not start with a public URL and a password under 12 characters. Five wrong passwords lock that visitor out for 15 minutes.
+- The server will not start on a public URL or a non-local address with a password under 12 characters. Five wrong passwords lock that visitor out for 15 minutes.
 - Bolna serves recordings to anyone holding the URL, so the URL never reaches the browser. Audio streams through a signed-in route.
-- Cross-site requests are refused, and only this machine and `PUBLIC_URL` may reach the dashboard. A strict Content Security Policy blocks injected scripts.
+- Cross-site requests and unknown `Host` headers are refused, which blocks DNS rebinding. A strict Content Security Policy blocks injected scripts.
 - The agent's tools and the webhook use separate secret tokens, so a leaked webhook URL cannot call the tools.
 - By default the server listens only on this machine. Set `HOST=0.0.0.0` when hosting.
 
@@ -246,11 +254,25 @@ Secrets live in `.env`, which git ignores. If a key is ever exposed, replace it 
 
 ## Known limits
 
-- English is the only language proven on live calls. If a provider misbehaves, set `VOICE_PROFILE=sarvam` and rerun `npm run setup-agent`.
+- English is the only language tested on live calls. If a provider misbehaves, set `VOICE_PROFILE=sarvam` and rerun `npm run setup-agent`.
 - The current turn design and voice have not yet been measured on a live call.
 - Project facts travel in the call prompt, which suits a builder's normal portfolio but would need a different approach for hundreds of projects.
 - The items marked for later in [India's calling rules](#indias-calling-rules) must be finished before a real campaign.
-- Not built yet: sign-up and multi-builder accounts, brochure ingestion, retry scheduling, and editing existing projects.
+- Not built yet: calling automatically when an enquiry arrives, sign-up and multi-builder accounts, brochure ingestion, retry scheduling, and editing existing projects.
+
+## Hard questions
+
+**Isn't this just a wrapper around Bolna?** Bolna carries the call. PropReach is what makes it a sales system: selling across the portfolio, reservations that can't clash, consent and do-not-call checks, lead classification, and the dashboard a sales team works from.
+
+**Will buyers talk to an AI?** We don't know yet, and only pilots will show it. Asha discloses that she's an AI in her first sentence and offers a person whenever asked, so we'll be measuring honest conversations.
+
+**Why pay more per minute than a telecaller's wage?** A builder pays for a list called at once, with every project known and every call on record. A wage covers one person on one call, and it leaves out hiring, training and management. One sale's commission covers about three months of the plan.
+
+**Is it legal?** Not yet for live campaigns. The [rules table](#indias-calling-rules) shows what's done and what must come first, and a lawyer should confirm it.
+
+**What happens when Asha gets something wrong?** She is told to quote only the facts in her prompt and to pass anything else to a consultant. Every call is recorded and transcribed, and the team can correct any status or do-not-call decision.
+
+**What stops a CRM from copying this?** Not much, today. Our answer is to get real pilot data first and to sit on top of a builder's CRM, not replace it.
 
 ## Team
 

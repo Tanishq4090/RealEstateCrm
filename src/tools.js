@@ -220,6 +220,11 @@ export function scheduleCallback(db, { lead_id, date, time, topic }, now = new D
   return { ok: true, confirmed: true, message: `${who} will call on ${speakDate(day)} at ${speakTime(slot)}.` };
 }
 
+export function doNotCall(db, { lead_id }) {
+  const saved = updateLead(db, { lead_id, do_not_call: 'true' });
+  return saved.ok ? { ok: true, saved: true, message: 'They will not be called again. Tell them so and end the call.' } : saved;
+}
+
 export function updateLead(db, args) {
   const lead = getLead(db, args.lead_id);
   if (!lead) return lack('Customer record not found. Carry on with the conversation.');
@@ -247,6 +252,6 @@ export function updateLead(db, args) {
 }
 
 export const TOOL_HANDLERS = {
-  search_projects: searchProjects, get_project_details: getProjectDetails, check_slots: checkSlots,
+  search_projects: searchProjects, get_project_details: getProjectDetails, check_slots: checkSlots, do_not_call: doNotCall,
   book_visit: bookVisit, schedule_callback: scheduleCallback, update_lead: updateLead,
 };
