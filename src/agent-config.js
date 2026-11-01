@@ -129,6 +129,9 @@ const voices = (keywords) => ({
   },
 });
 
+// TRAI keeps promotional calls off by default before 10 AM and after 9 PM.
+export const CALL_HOURS = { start: 10, end: 21 };
+
 export function buildAgent({ publicUrl, toolToken, webhookToken, voiceProfile = 'hinglish', projects = [] }) {
   const all = voices(keywordsFor(projects));
   const voice = all[voiceProfile] ?? all.hinglish;
@@ -138,8 +141,7 @@ export function buildAgent({ publicUrl, toolToken, webhookToken, voiceProfile = 
       agent_welcome_message: WELCOME,
       webhook_url: `${publicUrl}/webhooks/bolna?token=${webhookToken}`,
       call_summary_enabled: true,
-      // TRAI keeps promotional calls off by default before 10 AM and after 9 PM.
-      calling_guardrails: { call_start_hour: 10, call_end_hour: 21 },
+      calling_guardrails: { call_start_hour: CALL_HOURS.start, call_end_hour: CALL_HOURS.end },
       tasks: [{
         task_type: 'conversation',
         toolchain: { execution: 'sequential', pipelines: [['transcriber', 'llm', 'synthesizer']] },

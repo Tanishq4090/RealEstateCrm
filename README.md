@@ -240,7 +240,8 @@ Then run `npm run setup-agent` with the same `.env` and restart. Only one instan
 - People have the final say: the team can correct any lead status or do-not-call decision the AI made.
 - A booking is confirmed to a buyer only after the reservation succeeds.
 - Sample leads use numbers that cannot exist, and the dialler refuses them.
-- Calling hours are set to 10 AM to 9 PM recipient time through Bolna's calling guardrails, which the server relies on rather than enforcing itself.
+- Calling hours are set to 10 AM to 9 PM recipient time through Bolna's calling guardrails, which the server relies on rather than enforcing itself. Outside them Bolna holds a call until 10 AM, and the dashboard says so.
+- Numbers in `TEST_PHONES` can ring outside those hours, but only from the Call button and never from a campaign. List only your team's own phones.
 
 ## Security
 

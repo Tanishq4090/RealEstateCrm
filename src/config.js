@@ -24,6 +24,8 @@ export const config = {
   // Render supplies its own address, so a hosted server needs no URL set by hand.
   get publicUrl() { return (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, ''); },
   get fromNumber() { return process.env.BOLNA_FROM_NUMBER || ''; },
+  // The team's own phones. Only these may ring outside calling hours, so a test can run at night.
+  get testPhones() { return (process.env.TEST_PHONES || '').split(',').map((p) => p.trim()).filter(Boolean); },
   get dashboardPassword() { return process.env.DASHBOARD_PASSWORD || ''; },
   get voiceProfile() { return process.env.VOICE_PROFILE || 'hinglish'; },
   get dbPath() { return process.env.DB_PATH || path.join(ROOT, 'propreach.db'); },

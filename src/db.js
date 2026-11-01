@@ -86,6 +86,10 @@ export function openDb(file) {
 function migrate(db) {
   const columns = db.prepare('PRAGMA table_info(leads)').all().map((c) => c.name);
   if (!columns.includes('status_by')) db.exec("ALTER TABLE leads ADD COLUMN status_by TEXT NOT NULL DEFAULT 'asha'");
+  const callColumns = db.prepare('PRAGMA table_info(calls)').all().map((c) => c.name);
+  for (const name of ['status_at', 'scheduled_at']) {
+    if (!callColumns.includes(name)) db.exec(`ALTER TABLE calls ADD COLUMN ${name} TEXT`);
+  }
 }
 
 function seed(db) {

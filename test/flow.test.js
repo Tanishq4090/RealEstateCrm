@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 process.env.NODE_ENV = 'test';
 process.env.TOOL_TOKEN = 'test-token';
 // Set before config loads, so a developer's real .env can never reach these tests.
-for (const name of ['BOLNA_API_KEY', 'BOLNA_AGENT_ID', 'DASHBOARD_PASSWORD', 'PUBLIC_URL', 'BOLNA_FROM_NUMBER']) process.env[name] = '';
+for (const name of ['BOLNA_API_KEY', 'BOLNA_AGENT_ID', 'DASHBOARD_PASSWORD', 'PUBLIC_URL', 'BOLNA_FROM_NUMBER', 'TEST_PHONES']) process.env[name] = '';
 const { openDb, clearSamples } = await import('../src/db.js');
 const { addDays, nextWeekday, normalizePhone, isDialable, parseBudgetLakh, parseBhk, parseCsv, parseTime, clean, todayIST } = await import('../src/parse.js');
 const { bookVisit, checkSlots, doNotCall, getProjectDetails, scheduleCallback, searchProjects, updateLead } = await import('../src/tools.js');
-const { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign } = await import('../src/calls.js');
+const { dialBlocker, dialLead, handleExecutionEvent, portfolioBrief, runCampaign, withinCallingHours } = await import('../src/calls.js');
 const { buildAgent, SYSTEM_PROMPT, WELCOME, keywordsFor } = await import('../src/agent-config.js');
 const { createApp } = await import('../src/server.js');
 const { allProjects } = await import('../src/db.js');
@@ -938,6 +938,92 @@ test('a promise made on the call survives a callback with no agreed time', () =>
 test('calls stay inside the hours TRAI leaves on by default', () => {
   const agent = buildAgent({ publicUrl: 'https://x.dev', toolToken: 't', webhookToken: 'w', projects: [] });
   assert.deepEqual(agent.agent_config.calling_guardrails, { call_start_hour: 10, call_end_hour: 21 });
+});
+
+test('calling hours follow the clock in India, whatever the server runs on', () => {
+  const ist = (time) => new Date(`2026-11-02T${time}:00+05:30`);
+  assert.equal(withinCallingHours(ist('09:59')), false);
+  assert.equal(withinCallingHours(ist('10:00')), true);
+  assert.equal(withinCallingHours(ist('20:59')), true);
+  assert.equal(withinCallingHours(ist('21:00')), false);
+  assert.equal(withinCallingHours(ist('00:30')), false);
+});
+
+test('only a team phone rings at night, and only from the Call button', async () => {
+  WITH_CREDS();
+  process.env.TEST_PHONES = '98123 45678, +919812345679';
+  try {
+    const sent = async (lead, campaign) => {
+      const db = fresh();
+      db.prepare('INSERT INTO leads (name, phone, consent) VALUES (?, ?, 1)').run('Test', lead);
+      const log = [];
+      const row = db.prepare('SELECT * FROM leads WHERE phone = ?').get(lead);
+      const result = await dialLead(db, row, campaign, okFetch(log));
+      return { body: log[0], result };
+    };
+    assert.equal((await sent('+919812345678')).body.bypass_call_guardrails, true);
+    assert.equal((await sent('+919812345679')).body.bypass_call_guardrails, true);
+    assert.equal((await sent('+919812345678')).result.held, false, 'a test call is never held');
+    assert.equal((await sent('+919812345670')).body.bypass_call_guardrails, undefined, 'a buyer stays inside calling hours');
+    assert.equal((await sent('+919812345678', { id: null })).body.bypass_call_guardrails, undefined, 'a campaign never skips them');
+  } finally { delete process.env.TEST_PHONES; NO_CREDS(); }
+});
+
+test('a call held until morning is remembered and cannot be stacked', async () => {
+  WITH_CREDS();
+  try {
+    const db = fresh();
+    const id = newLead(db);
+    const log = [];
+    await dialLead(db, leadRow(db, id), null, okFetch(log));
+    const execution = db.prepare('SELECT execution_id FROM calls WHERE lead_id = ?').get(id).execution_id;
+    handleExecutionEvent(db, { id: execution, status: 'rescheduled', scheduled_at: '2026-11-02T04:29:59.388499+00:00' });
+    const row = () => db.prepare('SELECT * FROM calls WHERE execution_id = ?').get(execution);
+    assert.equal(row().status, 'rescheduled');
+    assert.equal(row().scheduled_at, '2026-11-02 04:29:59');
+    assert.equal(row().ended_at, null);
+
+    db.prepare("UPDATE calls SET created_at = datetime('now', '-3 hours') WHERE execution_id = ?").run(execution);
+    assert.deepEqual(await dialLead(db, leadRow(db, id), null, okFetch(log)), { ok: false, error: 'already called recently' });
+
+    handleExecutionEvent(db, { id: execution, status: 'ringing' });
+    assert.equal(row().scheduled_at, '2026-11-02 04:29:59', 'later events without a time keep the one Bolna gave');
+    assert.ok(row().status_at, 'the banner times the call from this status, not from the night before');
+  } finally { NO_CREDS(); }
+});
+
+test('stopping a campaign also cancels calls held until morning', async () => {
+  WITH_CREDS();
+  try {
+    const db = fresh();
+    const c = addCampaign(db, newLead(db));
+    db.prepare("UPDATE campaigns SET status = 'running' WHERE id = ?").run(c);
+    db.prepare("INSERT INTO calls (execution_id, campaign_id, status) VALUES ('h1', ?, 'rescheduled')").run(c);
+    const stops = [];
+    await stopCampaign(db, c, async (url) => { stops.push(url); return new Response('{}'); });
+    assert.deepEqual(stops, ['https://api.bolna.ai/call/h1/stop']);
+  } finally { NO_CREDS(); }
+});
+
+test('the live line only reports what Bolna has actually said', () => {
+  const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('const HELD = new Set');
+  const code = html.slice(start, html.indexOf('/** A table cell that carries'));
+  const ago = (ms) => new Date(Date.now() - ms).toISOString().slice(0, 19).replace('T', ' ');
+  const esc = String, RESULT = {}, ACTIVE_WINDOW_MS = 600000;
+  const utc = (s) => new Date(`${s.replace(' ', 'T')}Z`);
+  const ui = new Function('esc', 'RESULT', 'ACTIVE_WINDOW_MS', 'utc', `${code}; return { isHeld, isActive, liveLine, heldUntil };`)(esc, RESULT, ACTIVE_WINDOW_MS, utc);
+  const call = (status, extra = {}) => ({ status, lead: 'Anugrah', created_at: ago(5000), ended_at: null, ...extra });
+
+  const tomorrow = call('rescheduled', { scheduled_at: new Date(Date.now() + 3.6e7).toISOString().slice(0, 19).replace('T', ' ') });
+  assert.equal(ui.isHeld(tomorrow), true);
+  assert.equal(ui.isActive(tomorrow), false, 'a held call is not a live call');
+  assert.match(ui.heldUntil(call('rescheduled', { scheduled_at: '2026-11-02 04:29:59' })), /10:00/, 'reads 10:00, not 9:59');
+  assert.equal(ui.liveLine(call('queued')), 'Calling Anugrah');
+  assert.equal(ui.liveLine(call('ringing')), 'Ringing Anugrah');
+  assert.match(ui.liveLine(call('in-progress', { status_at: ago(65000) })), /^Asha is talking to Anugrah · 1:05$/);
+  // A call held overnight rings hours after it was created, and must still show as live.
+  assert.equal(ui.isActive(call('ringing', { created_at: ago(3.6e7), status_at: ago(1000) })), true);
 });
 
 test('an opt-out during the call takes effect at once and cancels bookings', () => {

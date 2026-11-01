@@ -1,7 +1,8 @@
 // Dialling through Bolna and turning webhook events into lead outcomes.
+import { CALL_HOURS } from './agent-config.js';
 import { config } from './config.js';
 import { allProjects, company } from './db.js';
-import { isDialable, speakDate, speakPrice, speakTime } from './parse.js';
+import { isDialable, normalizePhone, speakDate, speakPrice, speakTime } from './parse.js';
 import { updateLead } from './tools.js';
 
 const API = 'https://api.bolna.ai';
@@ -22,6 +23,15 @@ export function portfolioBrief(db) {
     return `- ${p.name}, ${p.location}: ${units || 'sold out'}. ${details.join('. ')}.`;
   }).join('\n');
 }
+
+/** Outside these hours Bolna accepts a call but holds it until they open again. */
+export function withinCallingHours(now = new Date()) {
+  const hour = Number(now.toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour: 'numeric', hourCycle: 'h23' }));
+  return hour >= CALL_HOURS.start && hour < CALL_HOURS.end;
+}
+
+/** Only the team's own numbers can ring at any hour, and only from the Call button, never a campaign. */
+const isTestCall = (lead, campaign) => !campaign && config.testPhones.map(normalizePhone).includes(lead.phone);
 
 export function dialBlocker(lead) {
   if (!lead.consent) return 'no consent on record';
@@ -59,10 +69,11 @@ async function placeCall(db, lead, campaign, fetchImpl) {
   if (blocked) return { ok: false, error: blocked };
   if (!config.bolnaKey || !config.agentId) return { ok: false, error: 'BOLNA_API_KEY or BOLNA_AGENT_ID is not set' };
 
-  // A manual call only waits for the live call to end. Campaigns also leave recent and booked buyers alone.
+  // A manual call waits for the live call to end, or a held one to ring. Campaigns also leave recent and booked buyers alone.
   const recent = campaign
     ? "(created_at > datetime('now', '-1 day') OR lead_id IN (SELECT lead_id FROM appointments WHERE status = 'scheduled'))"
-    : "(ended_at IS NULL AND created_at > datetime('now', '-10 minutes'))";
+    : `(ended_at IS NULL AND (created_at > datetime('now', '-10 minutes')
+        OR (status IN ('rescheduled', 'scheduled') AND created_at > datetime('now', '-1 day'))))`;
   if (db.prepare(`SELECT 1 FROM calls WHERE lead_id = ? AND ${recent}`).get(lead.id)) return { ok: false, error: 'already called recently' };
 
   const project = campaign?.project_id
@@ -78,6 +89,8 @@ async function placeCall(db, lead, campaign, fetchImpl) {
     },
   };
   if (config.fromNumber) body.from_phone_number = config.fromNumber;
+  const testing = isTestCall(lead, campaign);
+  if (testing) body.bypass_call_guardrails = true;
 
   const res = await fetchImpl(`${API}/call`, {
     method: 'POST', body: JSON.stringify(body),
@@ -89,7 +102,13 @@ async function placeCall(db, lead, campaign, fetchImpl) {
   db.prepare(`INSERT INTO calls (execution_id, lead_id, campaign_id) VALUES (?, ?, ?)
     ON CONFLICT (execution_id) DO UPDATE SET lead_id = excluded.lead_id, campaign_id = excluded.campaign_id`)
     .run(data.execution_id, lead.id, campaign?.id ?? null);
-  return { ok: true, execution_id: data.execution_id };
+  return { ok: true, execution_id: data.execution_id, held: !testing && !withinCallingHours() };
+}
+
+/** Bolna sends ISO times with an offset. Everything stored here is UTC in SQLite's own format. */
+function sqlTime(value) {
+  const time = new Date(value ?? NaN);
+  return Number.isNaN(time.getTime()) ? null : time.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 /** Applies one Bolna execution event. Safe for duplicate and out-of-order delivery. */
@@ -97,9 +116,10 @@ export function handleExecutionEvent(db, event) {
   const executionId = event.id ?? event.execution_id;
   if (!executionId || !event.status) return { ignored: true };
   const lead = db.prepare('SELECT id FROM leads WHERE phone = ?').get(event.user_number ?? event.telephony_data?.to_number ?? '');
-  db.prepare(`INSERT INTO calls (execution_id, lead_id, status) VALUES (?, ?, ?)
-    ON CONFLICT (execution_id) DO UPDATE SET status = excluded.status WHERE ended_at IS NULL`)
-    .run(executionId, lead?.id ?? null, event.status);
+  db.prepare(`INSERT INTO calls (execution_id, lead_id, status, status_at, scheduled_at) VALUES (?, ?, ?, datetime('now'), ?)
+    ON CONFLICT (execution_id) DO UPDATE SET status = excluded.status, status_at = excluded.status_at,
+      scheduled_at = COALESCE(excluded.scheduled_at, scheduled_at) WHERE ended_at IS NULL`)
+    .run(executionId, lead?.id ?? null, event.status, sqlTime(event.scheduled_at));
 
   const call = db.prepare('SELECT * FROM calls WHERE execution_id = ?').get(executionId);
   const final = event.status === 'completed' || FAILED.has(event.status);
@@ -193,7 +213,7 @@ export async function runCampaign(db, campaignId, fetchImpl = fetch, gapMs = 150
 }
 
 async function cancelQueued(db, campaignId, fetchImpl) {
-  const queued = db.prepare("SELECT execution_id FROM calls WHERE campaign_id = ? AND ended_at IS NULL AND status IN ('queued', 'scheduled')").all(campaignId);
+  const queued = db.prepare("SELECT execution_id FROM calls WHERE campaign_id = ? AND ended_at IS NULL AND status IN ('queued', 'scheduled', 'rescheduled')").all(campaignId);
   await Promise.all(queued.map(({ execution_id: id }) => fetchImpl(`${API}/call/${encodeURIComponent(id)}/stop`, {
     method: 'POST', headers: { Authorization: `Bearer ${config.bolnaKey}` },
   }).catch(() => null)));

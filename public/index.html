@@ -188,7 +188,7 @@ const LABEL = {
   unclassified: 'Needs review', unreachable: 'Unreachable', not_interested: 'Not interested',
 };
 const RESULT = {
-  scheduled: 'Scheduled', queued: 'Queued', initiated: 'Dialling', ringing: 'Ringing', 'in-progress': 'On call',
+  scheduled: 'Scheduled', rescheduled: 'Scheduled', prepared: 'Queued', queued: 'Queued', initiated: 'Dialling', ringing: 'Ringing', 'in-progress': 'On call',
   'call-disconnected': 'Wrapping up', completed: 'No conversation', 'no-answer': 'No answer', busy: 'Busy',
   failed: 'Failed', error: 'Failed', canceled: 'Cancelled', stopped: 'Stopped', 'balance-low': 'Out of credit',
 };
@@ -267,8 +267,24 @@ const utc = (s) => new Date(`${s.replace(' ', 'T')}Z`);
 const when = (s) => (s ? utc(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '');
 const nowIST = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 16);
 const need = (l) => [l.pref_bhk && `${l.pref_bhk} BHK`, l.pref_location, l.budget_lakh && price(l.budget_lakh)].filter(Boolean).join(' · ');
-const isActive = (c) => !c.ended_at && Date.now() - utc(c.created_at) < ACTIVE_WINDOW_MS;
-const resultOf = (c) => (c.connected ? 'Connected' : isActive(c) ? RESULT[c.status] ?? 'On call' : RESULT[c.status] ?? c.status);
+const HELD = new Set(['rescheduled', 'scheduled']);
+/** Bolna has the call but will dial it later, usually because calling hours are over. */
+const isHeld = (c) => !c.ended_at && HELD.has(c.status) && (!c.scheduled_at || utc(c.scheduled_at) > Date.now());
+const isActive = (c) => !c.ended_at && !HELD.has(c.status) && Date.now() - utc(c.status_at ?? c.created_at) < ACTIVE_WINDOW_MS;
+/** Bolna's time falls just before the hour, so it is rounded up to read 10:00, not 9:59. */
+const heldUntil = (c) => (c.scheduled_at
+  ? `on ${new Date(Math.ceil(utc(c.scheduled_at) / 60000) * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}`
+  : 'when calling hours open');
+const resultOf = (c) => (c.connected ? 'Connected' : isHeld(c) ? `Scheduled ${heldUntil(c)}` : RESULT[c.status] ?? (isActive(c) ? 'Calling' : c.status));
+/** Says only what Bolna has reported, so a call is never shown as connected before it is. */
+function liveLine(c) {
+  const who = esc(c.lead ?? c.phone ?? 'someone');
+  if (c.status === 'ringing') return `Ringing ${who}`;
+  if (c.status === 'call-disconnected') return `Call with ${who} just ended`;
+  if (c.status !== 'in-progress') return `Calling ${who}`;
+  const secs = Math.max(0, Math.floor((Date.now() - utc(c.status_at ?? c.created_at)) / 1000));
+  return `Asha is talking to ${who} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
 /** A table cell that carries its own label, for the card layout on phones. */
 const cell = (label, html, cls = '') => `<td data-label="${label}" class="${cls}${html ? '' : ' blank'}">${html}</td>`;
 const pageHead = (title, sub, actions = '') => `<div class="pagehead"><div class="inner"><div><h1>${esc(title)}</h1>${sub ? `<p class="sub">${esc(sub)}</p>` : ''}</div>${actions ? `<div class="actions">${actions}</div>` : ''}</div></div>`;
@@ -518,13 +534,12 @@ async function pollLive() {
   const [calls, appts] = await Promise.all([get('/api/calls'), get('/api/appointments')]);
   state.calls = calls;
   const active = calls.filter(isActive);
-  state.activeLeads = new Set(active.map((c) => c.lead_id));
+  const held = calls.filter(isHeld);
+  state.activeLeads = new Set([...active, ...held].map((c) => c.lead_id));
+  const lines = [...active.map(liveLine), ...held.map((c) => `Asha will call ${esc(c.lead ?? c.phone ?? 'someone')} ${heldUntil(c)}`)];
   const live = $('#live');
-  live.hidden = !active.length;
-  live.innerHTML = active.length ? `<i></i>${active.map((c) => {
-    const secs = Math.max(0, Math.floor((Date.now() - utc(c.created_at)) / 1000));
-    return `Asha is talking to ${esc(c.lead ?? c.phone ?? 'someone')} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-  }).join(' &nbsp;·&nbsp; ')}` : '';
+  live.hidden = !lines.length;
+  live.innerHTML = lines.length ? `${active.length ? '<i></i>' : ''}${lines.join(' &nbsp;·&nbsp; ')}` : '';
 
   const now = nowIST();
   const scheduled = appts.filter((a) => a.status === 'scheduled');
@@ -680,7 +695,8 @@ function launchSummary(ids, project) {
   const names = ids.map((id) => state.names.get(id)).filter(Boolean);
   const shown = names.slice(0, 3).join(', ');
   const others = names.length > 3 ? ` and ${plural(names.length - 3, 'other')}` : '';
-  return `Asha starts calling ${shown}${others} straight away${project ? `, leading with ${project}` : ''}. You can stop the campaign, but calls already ringing will finish.`;
+  const start = meta.callingOpen ? 'straight away' : `at ${hhmm(meta.callsOpenAt)}, when calling hours open`;
+  return `Asha starts calling ${shown}${others} ${start}${project ? `, leading with ${project}` : ''}. You can stop the campaign, but calls already ringing will finish.`;
 }
 
 document.addEventListener('click', act(async (e) => {
@@ -703,8 +719,8 @@ document.addEventListener('click', act(async (e) => {
     return safeRender();
   }
   if (d.call) {
-    await once(t, () => post(`/api/leads/${d.call}/call`));
-    toast('Asha is calling now.');
+    const { held } = await once(t, () => post(`/api/leads/${d.call}/call`));
+    toast(held ? `Calling hours are over, so Asha will call at ${hhmm(meta.callsOpenAt)}.` : 'Asha is calling now.');
     if ($('#dlg').open) $('#dlg').close();
     await pollLive().catch(noop);
     return safeRender();

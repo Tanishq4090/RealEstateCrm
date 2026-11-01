@@ -8,7 +8,8 @@ import { createAuth, isHttps, same } from './auth.js';
 import { config, ROOT } from './config.js';
 import { allProjects, clearSamples, company, openDb } from './db.js';
 import { recentActivity } from './activity.js';
-import { dialBlocker, dialLead, handleExecutionEvent, LEAD_STATUSES, portfolioBrief, runCampaign, stopCampaign } from './calls.js';
+import { CALL_HOURS } from './agent-config.js';
+import { dialBlocker, dialLead, handleExecutionEvent, LEAD_STATUSES, portfolioBrief, runCampaign, stopCampaign, withinCallingHours } from './calls.js';
 import { TOOL_HANDLERS } from './tools.js';
 import { normalizePhone, parseCsv } from './parse.js';
 
@@ -130,6 +131,8 @@ function overview(db) {
     byStatus,
     hasSamples: one('SELECT COUNT(*) n FROM leads WHERE is_sample = 1') > 0,
     calling: Boolean(config.bolnaKey && config.agentId),
+    callingOpen: withinCallingHours(),
+    callsOpenAt: `${CALL_HOURS.start}:00`,
     signInRequired: Boolean(config.dashboardPassword),
     company: company(db),
   };
@@ -222,7 +225,7 @@ async function api(db, req, res, pathname, fetchImpl) {
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
     if (!lead) return send(res, 404, { error: 'Lead not found' });
     const result = await dialLead(db, lead);
-    return send(res, result.ok ? 200 : 400, result.ok ? { ok: true } : { ok: false, error: result.error });
+    return send(res, result.ok ? 200 : 400, result.ok ? { ok: true, held: result.held } : { ok: false, error: result.error });
   }
 
   if (route === 'GET /api/calls') {
