@@ -207,6 +207,20 @@ If the tunnel URL changes, update `PUBLIC_URL` and rerun `npm run setup-agent`. 
 
 ## Deploy
 
+One Node service hosts both the dashboard and the API, so there is nothing separate to deploy.
+
+### On Render
+
+`render.yaml` defines everything: a Starter web service in Singapore with a 1 GB disk for the SQLite database. The free plan won't work, because it sleeps after 15 minutes and loses local files, which would cut off live calls and erase leads.
+
+1. In the Render dashboard, choose **New**, then **Blueprint**, and pick this repository.
+2. Enter `BOLNA_API_KEY`, `BOLNA_AGENT_ID` and a `DASHBOARD_PASSWORD` of at least 12 characters.
+3. When the first deploy finishes, open the service's **Shell** and run `npm run setup-agent` to point the Bolna agent at the new address.
+
+Render supplies the public address itself, and generates a fixed `TOOL_TOKEN`. New commits deploy once CI passes, and each deploy restarts the server, so avoid pushing during a campaign.
+
+### With Docker
+
 The included `Dockerfile` runs the server on port 3000 and keeps its data on a volume. Set `PUBLIC_URL`, `DASHBOARD_PASSWORD` and a fixed `TOOL_TOKEN` in `.env` first, because the server will not start on a reachable address without a strong password.
 
 ```bash

@@ -1,0 +1,36 @@
+# One Node service hosts the dashboard and the API. Create it with New > Blueprint in the Render dashboard.
+services:
+  - type: web
+    name: propreach-ai
+    runtime: node
+    # The free plan sleeps and has no disk, which would cut off live calls and erase the database.
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    disk:
+      name: propreach-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      # Render's default is newer than the Node version this code is tested on.
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_PATH
+        value: /var/data/propreach.db
+      - key: VOICE_PROFILE
+        value: hinglish
+      # Stays the same across deploys, so the Bolna agent's tools keep working.
+      - key: TOOL_TOKEN
+        generateValue: true
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      - key: BOLNA_API_KEY
+        sync: false
+      - key: BOLNA_AGENT_ID
+        sync: false

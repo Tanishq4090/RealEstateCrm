@@ -960,3 +960,36 @@ test('a dashboard other machines can reach will not start without a strong passw
   assert.equal(start({ HOST: '0.0.0.0', DASHBOARD_PASSWORD: 'long-enough-password' }).status, null, 'a strong password lets it run until the timeout');
   assert.equal(start({ HOST: '127.0.0.1' }).status, null, 'local use still needs no password');
 });
+
+test('behind Render each visitor has their own sign-in lockout, and forged headers count for nothing elsewhere', async () => {
+  const { createAuth } = await import('../src/auth.js');
+  const saved = [process.env.DASHBOARD_PASSWORD, process.env.RENDER];
+  process.env.DASHBOARD_PASSWORD = 'correct-horse-battery';
+  try {
+    const from = (ip) => ({ headers: { 'cf-connecting-ip': ip }, socket: { remoteAddress: '10.20.30.40' } });
+    process.env.RENDER = 'true';
+    const hosted = createAuth();
+    for (let i = 0; i < 5; i++) hosted.signIn(from('203.0.113.1'), 'wrong');
+    assert.equal(hosted.signIn(from('203.0.113.1'), 'correct-horse-battery').status, 429);
+    assert.notEqual(hosted.signIn(from('203.0.113.2'), 'correct-horse-battery').status, 429);
+
+    delete process.env.RENDER;
+    const direct = createAuth();
+    for (let i = 0; i < 5; i++) direct.signIn(from(`198.51.100.${i}`), 'wrong');
+    assert.equal(direct.signIn(from('198.51.100.99'), 'correct-horse-battery').status, 429, 'a forged header must not dodge the lockout');
+  } finally {
+    process.env.DASHBOARD_PASSWORD = saved[0] ?? ''; if (saved[1] === undefined) delete process.env.RENDER; else process.env.RENDER = saved[1];
+  }
+});
+
+test('Render supplies the public address, and an explicit one still wins', () => {
+  const saved = [process.env.PUBLIC_URL, process.env.RENDER_EXTERNAL_URL];
+  try {
+    process.env.PUBLIC_URL = ''; process.env.RENDER_EXTERNAL_URL = 'https://propreach-ai.onrender.com/';
+    assert.equal(config.publicUrl, 'https://propreach-ai.onrender.com');
+    process.env.PUBLIC_URL = 'https://demo.example.com';
+    assert.equal(config.publicUrl, 'https://demo.example.com');
+  } finally {
+    process.env.PUBLIC_URL = saved[0] ?? ''; if (saved[1] === undefined) delete process.env.RENDER_EXTERNAL_URL; else process.env.RENDER_EXTERNAL_URL = saved[1];
+  }
+});

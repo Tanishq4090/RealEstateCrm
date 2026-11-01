@@ -21,7 +21,8 @@ export const config = {
   get webhookToken() { return createHash('sha256').update(`webhook:${process.env.TOOL_TOKEN}`).digest('hex'); },
   get bolnaKey() { return process.env.BOLNA_API_KEY || ''; },
   get agentId() { return process.env.BOLNA_AGENT_ID || ''; },
-  get publicUrl() { return (process.env.PUBLIC_URL || '').replace(/\/$/, ''); },
+  // Render supplies its own address, so a hosted server needs no URL set by hand.
+  get publicUrl() { return (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, ''); },
   get fromNumber() { return process.env.BOLNA_FROM_NUMBER || ''; },
   get dashboardPassword() { return process.env.DASHBOARD_PASSWORD || ''; },
   get voiceProfile() { return process.env.VOICE_PROFILE || 'hinglish'; },

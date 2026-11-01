@@ -25,11 +25,14 @@ function readCookie(req) {
   return null;
 }
 
-/** Cloudflare's visitor header is only trusted from the tunnel on this machine, where it cannot be forged. */
+/**
+ * Cloudflare's visitor header is only trusted where Cloudflare sets it: the tunnel on this machine, or Render,
+ * whose proxy is the peer for everyone. X-Forwarded-For is never used, because visitors can send their own.
+ */
 function clientIp(req) {
   const peer = req.socket.remoteAddress ?? '';
   const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer);
-  return (local && req.headers['cf-connecting-ip']) || peer;
+  return ((local || process.env.RENDER === 'true') && req.headers['cf-connecting-ip']) || peer;
 }
 
 export function createAuth() {
