@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "AI real estate sales executive on outbound phone calls, built on Bolna",
-  "engines": { "node": "22.x" },
+  "engines": { "node": "24.x" },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",

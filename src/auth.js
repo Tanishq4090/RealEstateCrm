@@ -11,7 +11,7 @@ const MAX_TRACKED = 1000;
 
 const sha = (s) => createHash('sha256').update(String(s)).digest();
 export const same = (a, b) => timingSafeEqual(sha(a), sha(b));
-export const isHttps = (req) => req.headers['x-forwarded-proto'] === 'https';
+export const isHttps = (req) => req?.headers?.['x-forwarded-proto'] === 'https';
 
 function sessionCookie(req, value, maxAgeSeconds) {
   return [`${COOKIE}=${value}`, 'HttpOnly', 'SameSite=Strict', 'Path=/', `Max-Age=${maxAgeSeconds}`, ...(isHttps(req) ? ['Secure'] : [])].join('; ');

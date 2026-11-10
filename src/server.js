@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
@@ -40,7 +40,9 @@ function redirect(res, location) {
 /** Serves a page whose one inline script is allowed by a fresh nonce, so injected scripts cannot run. */
 function sendPage(res, file) {
   const nonce = randomBytes(16).toString('base64');
-  const html = readFileSync(path.join(ROOT, 'public', file), 'utf8').replace('<script>', `<script nonce="${nonce}">`);
+  const rootFile = path.join(ROOT, 'public', file);
+  const fullPath = existsSync(rootFile) ? rootFile : path.join(process.cwd(), 'public', file);
+  const html = readFileSync(fullPath, 'utf8').replace('<script>', `<script nonce="${nonce}">`);
   send(res, 200, html, 'text/html; charset=utf-8', {
     'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src data:; media-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
   });
@@ -88,6 +90,9 @@ async function streamRecording(db, req, res, id, fetchImpl) {
 }
 
 async function readBody(req) {
+  if (req.readableEnded && req.body !== undefined) {
+    return typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  }
   let raw = '';
   req.setEncoding('utf8'); // keeps a Hindi character intact when it spans two chunks
   for await (const chunk of req) {
@@ -311,6 +316,7 @@ async function api(db, req, res, pathname, fetchImpl) {
 export function createApp(db, { fetchImpl = fetch } = {}) {
   const auth = createAuth();
   return http.createServer(async (req, res) => {
+    if (!res.req) res.req = req;
     try {
       const url = new URL(req.url, 'http://localhost');
       const { pathname } = url;
