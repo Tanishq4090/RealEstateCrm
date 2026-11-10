@@ -1,11 +1,12 @@
 {
   "version": 2,
   "functions": {
-    "api/index.cjs": {
+    "api/index.js": {
       "includeFiles": "{public,src}/**"
     }
   },
   "routes": [
-    { "src": "/(.*)", "dest": "/api/index.cjs" }
+    { "src": "/ping", "dest": "/api/ping.js" },
+    { "src": "/(.*)", "dest": "/api/index.js" }
   ]
 }
