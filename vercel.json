@@ -5,8 +5,7 @@
       "includeFiles": "{public,src}/**"
     }
   },
-  "routes": [
-    { "src": "/ping", "dest": "/api/ping.js" },
-    { "src": "/(.*)", "dest": "/api/index.js" }
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/api/index" }
   ]
 }
