@@ -78,7 +78,9 @@ export function openDb(file) {
   migrate(db);
   if (!db.prepare('SELECT 1 FROM company').get()) seed(db);
   // This file holds buyers' phone numbers, so only this user may read it.
-  for (const f of [file, `${file}-wal`, `${file}-shm`]) if (existsSync(f)) chmodSync(f, 0o600);
+  for (const f of [file, `${file}-wal`, `${file}-shm`]) {
+    if (existsSync(f)) { try { chmodSync(f, 0o600); } catch {} }
+  }
   return db;
 }
 

@@ -51,6 +51,7 @@ function hostAllowed(req) {
   const host = (req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
   const allowed = ['localhost', '127.0.0.1', '[::1]'];
   if (config.publicUrl) allowed.push(new URL(config.publicUrl).hostname);
+  if (host.endsWith('.vercel.app')) allowed.push(host);
   return allowed.includes(host);
 }
 
@@ -235,10 +236,36 @@ async function api(db, req, res, pathname, fetchImpl) {
       LEFT JOIN projects p ON p.id = m.project_id ORDER BY c.id DESC LIMIT 200`).all().map(publicCall));
   }
   if (/^GET \/api\/calls\/\d+\/recording$/.test(route)) return streamRecording(db, req, res, id, fetchImpl);
+  if (route === 'GET /api/reps') {
+    return send(res, 200, db.prepare('SELECT id, name, phone FROM reps').all());
+  }
   if (route === 'GET /api/appointments') {
     return send(res, 200, db.prepare(`SELECT a.*, l.name lead, l.phone, l.pref_bhk, l.budget_lakh, l.summary, p.name project, r.name rep
       FROM appointments a JOIN leads l ON l.id = a.lead_id LEFT JOIN projects p ON p.id = a.project_id LEFT JOIN reps r ON r.id = a.rep_id
       ORDER BY a.status = 'scheduled' DESC, a.date, a.time`).all());
+  }
+  if (route === 'POST /api/appointments') {
+    const b = parseJson(await readBody(req));
+    const leadId = Number(b.lead_id);
+    const projectId = b.project_id ? Number(b.project_id) : null;
+    const repId = b.rep_id ? Number(b.rep_id) : null;
+    const type = b.type === 'callback' ? 'callback' : 'visit';
+    const date = String(b.date || '').trim();
+    const time = String(b.time || '').trim();
+    const notes = String(b.notes || '').trim() || null;
+    if (!leadId || !date || !time) return send(res, 400, { error: 'Lead, date and time are required' });
+    const lead = db.prepare('SELECT id, name FROM leads WHERE id = ?').get(leadId);
+    if (!lead) return send(res, 404, { error: 'Lead not found' });
+    try {
+      const resAppt = db.prepare(`INSERT INTO appointments (type, lead_id, project_id, date, time, rep_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .run(type, leadId, projectId, date, time, repId, notes);
+      const actionDesc = type === 'visit' ? `Site visit scheduled for ${date} at ${time}` : `Meeting scheduled for ${date} at ${time}`;
+      db.prepare(`UPDATE leads SET next_action = ?, updated_at = datetime('now') WHERE id = ?`).run(actionDesc, leadId);
+      return send(res, 201, { ok: true, id: Number(resAppt.lastInsertRowid) });
+    } catch (err) {
+      if (String(err.message).includes('UNIQUE')) return send(res, 409, { error: 'That time slot is already booked for this project' });
+      throw err;
+    }
   }
   if (/^POST \/api\/appointments\/\d+$/.test(route)) {
     const { status } = parseJson(await readBody(req));
@@ -333,7 +360,7 @@ export function createApp(db, { fetchImpl = fetch } = {}) {
   });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const reachable = config.publicUrl || !['127.0.0.1', 'localhost', '::1'].includes(config.host);
   if (reachable && config.dashboardPassword.length < MIN_PASSWORD) {
     console.error(`Set DASHBOARD_PASSWORD to at least ${MIN_PASSWORD} characters: other machines can reach this dashboard.`);
@@ -343,7 +370,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   // A restart ends the dialling loop. Never resume it silently.
   db.prepare("UPDATE campaigns SET status = 'interrupted' WHERE status = 'running'").run();
   createApp(db).listen(config.port, config.host, () => {
-    console.log(`PropReach dashboard: http://localhost:${config.port}`);
+    console.log(`RealEstate crm dashboard: http://localhost:${config.port}`);
     console.log(`Portfolio: ${portfolioBrief(db)}`);
     if (!config.bolnaKey) console.log('BOLNA_API_KEY not set: dashboard works, calling is off.');
   });

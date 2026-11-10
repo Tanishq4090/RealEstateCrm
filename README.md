@@ -1,4 +1,4 @@
-# PropReach AI
+# RealEstate crm
 
 ### Every enquiry called. Every project in play. Every visit booked.
 
@@ -7,7 +7,7 @@
 ![No npm dependencies](https://img.shields.io/badge/npm%20dependencies-0-ea580c)
 ![Voice by Bolna](https://img.shields.io/badge/voice-Bolna-6d28d9)
 
-**PropReach AI phones every home buyer who enquires, talks through the builder's whole portfolio, and books the site visit.**
+**RealEstate crm phones every home buyer who enquires, talks through the builder's whole portfolio, and books the site visit.**
 Asha, the voice agent, says she is an AI in her first sentence, answers from real project facts, and suggests a better fit when there is one, even a project the buyer never asked about. The sales team gets a classified lead, a transcript and any agreed next step, then takes over in person.
 
 <img src="docs/media/demo.gif" alt="Split screen. On the right, Asha asks whether she is speaking with Rahul, quotes Whitefield Heights, suggests the cheaper and larger Sarjapur Residences, finds that 10 AM is taken, and books 11:30 AM. On the left, the dashboard shows the live call, then the lead marked hot with its requirements and the visit on the team calendar.">

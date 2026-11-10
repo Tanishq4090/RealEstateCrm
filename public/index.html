@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PropReach</title>
+<title>RealEstate crm</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23ea580c'/><path d='M8 25V13l8-6 8 6v12h-5v-7h-6v7z' fill='%23fff'/></svg>">
 <style>
 :root{color-scheme:light;
@@ -134,7 +134,7 @@ audio{width:100%;margin:.5rem 0}.call+.call{margin-top:1rem}.transcript{margin-t
 <body>
 <div class="app">
   <aside class="side">
-    <a class="brand" href="#overview"><span class="tile"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10l7-5.5L19 10v10h-4.5v-6h-5v6z"/></svg></span>PropReach</a>
+    <a class="brand" href="#overview"><span class="tile"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10l7-5.5L19 10v10h-4.5v-6h-5v6z"/></svg></span>RealEstate crm</a>
     <nav id="links" aria-label="Main"></nav>
     <div class="account">
       <span class="avatar" id="accountAvatar" aria-hidden="true"></span>
@@ -164,7 +164,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const noop = () => {};
 
-const TABS = { overview: 'Overview', leads: 'Leads', calls: 'Calls', appointments: 'Visits', campaigns: 'Campaigns', projects: 'Projects', reports: 'Reports', more: 'More' };
+const TABS = { overview: 'Overview', leads: 'Leads', calls: 'Calls', appointments: 'Meeting Scheduled', campaigns: 'Campaigns', projects: 'Projects', reports: 'Reports', more: 'More' };
 const NAV = [
   { items: ['overview'] },
   { label: 'Sales', items: ['leads', 'calls', 'appointments'] },
@@ -321,7 +321,7 @@ const views = {
     const kpis = [
       ['leads', 'Leads', o.leads, by.hot ? `${by.hot} hot` : 'None hot yet'],
       ['calls', 'Calls', o.attempted, `${o.connected} connected`],
-      ['appointments', 'Upcoming visits', upcoming.length, upcoming[0] ? `Next ${day(upcoming[0].date)}` : 'Nothing booked'],
+      ['appointments', 'Scheduled meetings', upcoming.length, upcoming[0] ? `Next ${day(upcoming[0].date)}` : 'Nothing scheduled'],
       ['reports', 'Visit rate', `${rate}%`, 'Leads with a visit'],
     ];
     const chevron = icon('arrow');
@@ -341,7 +341,7 @@ const views = {
           ${stories.length ? stories.slice(0, 4).map(activity).join('') : '<p class="emptyline">Conversations appear here after the first call.</p>'}</section>
         <div class="stack">
           <section class="card"><div class="cardhead"><h2>Needs attention</h2></div>${todos.length ? todos.join('') : `<p class="emptyline">You're all caught up.</p>`}</section>
-          <section class="card"><div class="cardhead"><h2>Upcoming</h2><a href="#appointments">View all</a></div>
+          <section class="card"><div class="cardhead"><h2>Scheduled meetings</h2><a href="#appointments">View all</a></div>
             ${upcoming.length ? upcoming.slice(0, 3).map((a) => `<button class="item" data-lead="${a.lead_id}">${avatar(a.lead)}<span class="grow"><span class="strong">${esc(a.lead)}</span><span class="small" style="display:block">${esc(a.project ?? 'Human callback')}</span></span>
               <span class="when">${day(a.date)}<br>${hhmm(a.time)}</span></button>`).join('') : '<p class="emptyline">Nothing booked yet.</p>'}</section>
         </div>
@@ -394,12 +394,19 @@ const views = {
     const shown = { upcoming: open, completed: done, cancelled: off }[state.visitFilter];
     const row = (a) => {
       const late = a.status === 'scheduled' && `${a.date} ${a.time}` < now;
+      const typeBadge = a.type === 'visit'
+        ? '<span class="pill good">Site Visit</span>'
+        : '<span class="pill callback_requested">Consultation Call</span>';
+      const reqs = [a.pref_bhk && `${a.pref_bhk} BHK`, a.budget_lakh && price(a.budget_lakh)].filter(Boolean).join(' · ');
       return `<tr>
-        <td class="lead"><div class="who">${avatar(a.lead)}<div><button class="rowlink" data-lead="${a.lead_id}">${esc(a.lead)}</button>${late ? '<span class="overdue">Overdue</span>' : ''}</div></div></td>
-        <td class="tag">${hhmm(a.time)}</td>
-        ${cell('For', esc(a.project ?? 'Human callback'))}${cell('Consultant', esc(a.rep ?? 'Unassigned'))}
+        <td class="lead"><div class="who">${avatar(a.lead)}<div><button class="rowlink" data-lead="${a.lead_id}">${esc(a.lead)}</button><span class="small" style="display:block;color:var(--muted)">${esc(a.phone)}</span></div></div></td>
+        <td class="tag"><span class="strong">${hhmm(a.time)}</span>${late ? '<span class="overdue">Overdue</span>' : ''}</td>
+        ${cell('Meeting Type', `<div style="display:flex;flex-direction:column;gap:.25rem">${typeBadge}<span class="strong">${esc(a.project ?? 'Whole portfolio')}</span></div>`)}
+        ${cell('Consultant', `<span class="strong">${esc(a.rep ?? 'Unassigned')}</span>`)}
+        ${cell('Details & Notes', `${reqs ? `<span class="small strong" style="display:block">${reqs}</span>` : ''}<span class="small clip" style="color:var(--muted)" title="${esc(a.notes || a.summary || '')}">${esc(a.notes || a.summary || 'Scheduled by Asha')}</span>`)}
         <td class="end ${a.status === 'scheduled' ? '' : 'blank'}">${a.status === 'scheduled'
-          ? `<button class="secondary" data-appt="${a.id}" data-to="completed" data-kind="${a.type}">Done</button> <button class="quiet dull" data-appt="${a.id}" data-to="cancelled" data-kind="${a.type}">Call off</button>` : ''}</td></tr>`;
+          ? `<button class="secondary" data-appt="${a.id}" data-to="completed" data-kind="${a.type}">Done</button> <button class="quiet dull" data-appt="${a.id}" data-to="cancelled" data-kind="${a.type}">Call off</button>`
+          : `<span class="pill dull">${esc(a.status === 'completed' ? 'Completed' : 'Called off')}</span>`}</td></tr>`;
     };
     const groups = [];
     for (const a of shown) {
@@ -407,10 +414,10 @@ const views = {
       if (last?.date === a.date) last.items.push(a); else groups.push({ date: a.date, items: [a] });
     }
     const tabs = [['upcoming', 'Upcoming', open.length], ['completed', 'Completed', done.length], ['cancelled', 'Called off', off.length]];
-    return page(pageHead('Visits', 'Site visits and consultant callbacks.'), `
-      <div class="toolbar">${tabsHtml('visittab', 'Filter visits', tabs, state.visitFilter)}</div>
-      <div class="tablecard">${groups.length ? `<table class="list"><thead><tr><th>Customer</th><th>Time</th><th>For</th><th>Consultant</th><th></th></tr></thead>
-        <tbody>${groups.map((g) => `<tr class="group"><td colspan="5">${day(g.date)}</td></tr>${g.items.map(row).join('')}`).join('')}</tbody></table>` : '<p class="empty">Nothing here yet.</p>'}</div>`);
+    return page(pageHead('Meeting Scheduled', 'Meetings and property site visits scheduled with leads.', '<button class="primary" data-newmeeting>+ Schedule meeting</button>'), `
+      <div class="toolbar">${tabsHtml('visittab', 'Filter meetings', tabs, state.visitFilter)}</div>
+      <div class="tablecard">${groups.length ? `<table class="list"><thead><tr><th>Customer / Lead</th><th>Time</th><th>Meeting Type & Project</th><th>Consultant</th><th>Details & Notes</th><th>Status / Actions</th></tr></thead>
+        <tbody>${groups.map((g) => `<tr class="group"><td colspan="6">${day(g.date)}</td></tr>${g.items.map(row).join('')}`).join('')}</tbody></table>` : '<p class="empty">No meetings scheduled here yet.</p>'}</div>`);
   },
 
   async campaigns() {
@@ -484,7 +491,7 @@ function links() {
     a.classList.toggle('on', on || phoneOnlyMore);
     if (key === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
-  document.title = `${TABS[tab]} · PropReach`;
+  document.title = `${TABS[tab]} · RealEstate crm`;
 }
 
 function updateCounts() {
@@ -608,7 +615,7 @@ async function showLead(id) {
       <label>Lead status<select id="leadStatus" data-id="${l.id}">${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${k === l.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
       <button class="quiet dull" data-dnc="${l.id}" data-value="${l.do_not_call ? 0 : 1}">${l.do_not_call ? 'Allow calls again' : 'Mark do not call'}</button></div>
       ${decidedBy ? `<p class="small" style="margin-top:.375rem">${decidedBy}</p>` : ''}</div>
-    ${l.appointments.length ? `<div class="section"><h3>Visits</h3>${l.appointments.map(appt).join('')}</div>` : ''}
+    ${l.appointments.length ? `<div class="section"><h3>Scheduled Meetings</h3>${l.appointments.map(appt).join('')}</div>` : ''}
     ${l.calls.length ? `<div class="section"><h3>Calls</h3>${l.calls.map(call).join('')}<p class="small" style="margin-top:.625rem">Summaries are written by AI.</p></div>` : ''}`);
 }
 
@@ -629,6 +636,56 @@ function showProject(id) {
     ${p.description ? `<p>${esc(p.description)}</p>` : ''}
     <div class="section"><h3>Homes</h3>${p.configs.map((c) => `<div class="unit"><span>${c.bhk} BHK, ${c.size_sqft} sq ft</span><span class="small">from ${price(c.price_lakh)} · ${c.units_left} left</span></div>`).join('')}</div>
     <div class="section"><h3>Details</h3>${facts([['Possession', p.possession], ['Payment plan', p.payment_plan], ['Amenities', p.amenities.join(', ')], ['Nearby', p.landmarks.join(', ')]])}</div>`);
+}
+
+async function openMeetingDialog() {
+  const [leads, projects, reps] = await Promise.all([get('/api/leads'), get('/api/projects'), get('/api/reps').catch(() => [])]);
+  const defaultDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  openDlg(`<header><h2 class="title">Schedule meeting</h2>${closeBtn}</header>
+    <form data-form="meeting">
+      <label>Lead / Customer
+        <select name="lead_id" required>
+          ${leads.length ? leads.map((l) => `<option value="${l.id}">${esc(l.name)} (${esc(l.phone)})${l.interested_project ? ` · ${esc(l.interested_project)}` : ''}</option>`).join('') : '<option value="">No leads available</option>'}
+        </select>
+      </label>
+      <div class="split">
+        <label>Meeting type
+          <select name="type">
+            <option value="visit">Site Visit</option>
+            <option value="callback">Consultation Call</option>
+          </select>
+        </label>
+        <label>Project / Property
+          <select name="project_id">
+            <option value="">Whole portfolio / Callback</option>
+            ${projects.map((p) => `<option value="${p.id}">${esc(p.name)} (${esc(p.location)})</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div class="split">
+        <label>Date<input name="date" type="date" required value="${defaultDate}"></label>
+        <label>Time
+          <select name="time" required>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:30" selected>11:30 AM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="15:30">03:30 PM</option>
+            <option value="17:00">05:00 PM</option>
+            <option value="18:30">06:30 PM</option>
+          </select>
+        </label>
+      </div>
+      <label>Consultant / Host
+        <select name="rep_id">
+          <option value="">Assign automatically</option>
+          ${reps.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Notes / Agenda
+        <textarea name="notes" rows="2" placeholder="e.g. 3 BHK walkthrough, pricing & payment plan discussion"></textarea>
+      </label>
+      <p style="margin-top:1rem"><button class="primary" ${leads.length ? '' : 'disabled'}>Schedule meeting</button></p>
+    </form>`);
 }
 
 async function openCampaign() {
@@ -729,6 +786,7 @@ document.addEventListener('click', act(async (e) => {
   if ('upload' in d) return openDlg(FORMS.csv);
   if ('addproject' in d) return openDlg(FORMS.project);
   if ('newcampaign' in d) return openCampaign();
+  if ('newmeeting' in d) return openMeetingDialog();
   if (d.appt) {
     if (d.to === 'cancelled') {
       const noun = d.kind === 'visit' ? 'visit' : 'callback';
@@ -818,6 +876,10 @@ document.addEventListener('submit', act(async (e) => {
       const { bhk, size_sqft, price_lakh, units_left, ...rest } = f;
       await post('/api/projects', { ...rest, configs: [{ bhk, size_sqft, price_lakh, units_left }] });
       toast('Project saved. Asha can use it now.');
+    }
+    if (form.dataset.form === 'meeting') {
+      await post('/api/appointments', f);
+      toast('Meeting scheduled');
     }
   });
   $('#dlg').close();

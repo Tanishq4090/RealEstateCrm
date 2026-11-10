@@ -137,7 +137,7 @@ export function buildAgent({ publicUrl, toolToken, webhookToken, voiceProfile = 
   const voice = all[voiceProfile] ?? all.hinglish;
   return {
     agent_config: {
-      agent_name: 'PropReach Sales Executive',
+      agent_name: 'RealEstate crm Sales Executive',
       agent_welcome_message: WELCOME,
       webhook_url: `${publicUrl}/webhooks/bolna?token=${webhookToken}`,
       call_summary_enabled: true,

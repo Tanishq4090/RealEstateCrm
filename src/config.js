@@ -9,7 +9,9 @@ if (existsSync(envPath)) process.loadEnvFile(envPath);
 
 if (!process.env.TOOL_TOKEN) {
   process.env.TOOL_TOKEN = randomBytes(24).toString('hex');
-  if (process.env.NODE_ENV !== 'test') appendFileSync(envPath, `\nTOOL_TOKEN=${process.env.TOOL_TOKEN}\n`, { mode: 0o600 });
+  if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
+    try { appendFileSync(envPath, `\nTOOL_TOKEN=${process.env.TOOL_TOKEN}\n`, { mode: 0o600 }); } catch {}
+  }
 }
 
 export const config = {
@@ -21,12 +23,15 @@ export const config = {
   get webhookToken() { return createHash('sha256').update(`webhook:${process.env.TOOL_TOKEN}`).digest('hex'); },
   get bolnaKey() { return process.env.BOLNA_API_KEY || ''; },
   get agentId() { return process.env.BOLNA_AGENT_ID || ''; },
-  // Render supplies its own address, so a hosted server needs no URL set by hand.
-  get publicUrl() { return (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, ''); },
+  // Render or Vercel supplies its own address, so a hosted server needs no URL set by hand.
+  get publicUrl() {
+    const raw = process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') || process.env.RENDER_EXTERNAL_URL || '';
+    return raw.replace(/\/$/, '');
+  },
   get fromNumber() { return process.env.BOLNA_FROM_NUMBER || ''; },
   // The team's own phones. Only these may ring outside calling hours, so a test can run at night.
   get testPhones() { return (process.env.TEST_PHONES || '').split(',').map((p) => p.trim()).filter(Boolean); },
   get dashboardPassword() { return process.env.DASHBOARD_PASSWORD || ''; },
   get voiceProfile() { return process.env.VOICE_PROFILE || 'hinglish'; },
-  get dbPath() { return process.env.DB_PATH || path.join(ROOT, 'propreach.db'); },
+  get dbPath() { return process.env.DB_PATH || (process.env.VERCEL ? '/tmp/propreach.db' : path.join(ROOT, 'propreach.db')); },
 };

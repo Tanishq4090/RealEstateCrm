@@ -1,6 +1,6 @@
 // Dashboard sign-in. The password crosses the network once, at login. After that the
 // browser holds a random session id in a cookie that page scripts cannot read.
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config } from './config.js';
 
 const COOKIE = 'pr_session';
@@ -30,15 +30,26 @@ function readCookie(req) {
  * whose proxy is the peer for everyone. X-Forwarded-For is never used, because visitors can send their own.
  */
 function clientIp(req) {
-  const peer = req.socket.remoteAddress ?? '';
+  const peer = req.socket?.remoteAddress ?? '';
   const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer);
-  return ((local || process.env.RENDER === 'true') && req.headers['cf-connecting-ip']) || peer;
+  return ((local || process.env.RENDER === 'true' || process.env.VERCEL === '1') && (req.headers['x-real-ip'] || req.headers['cf-connecting-ip'])) || peer;
 }
 
 export function createAuth() {
   const sessions = new Map(); // sha256 of the session id -> expiry, so a memory dump holds no usable id
+  const revoked = new Set();
   const failures = new Map(); // ip -> { count, until }
   const key = (token) => sha(token).toString('hex');
+  const signPayload = (payload) => createHmac('sha256', `session:${config.dashboardPassword}`).update(payload).digest('hex');
+  const verifyStateless = (token) => {
+    if (process.env.VERCEL !== '1' || revoked.has(key(token))) return false;
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const [expStr, nonce, sig] = parts;
+    const exp = Number(expStr);
+    if (!Number.isFinite(exp) || exp <= Date.now()) return false;
+    return same(sig, signPayload(`${expStr}.${nonce}`));
+  };
 
   return {
     isSignedIn(req) {
@@ -46,10 +57,12 @@ export function createAuth() {
       const token = readCookie(req);
       if (!token) return false;
       const expires = sessions.get(key(token));
-      if (!expires) return false;
-      if (expires > Date.now()) return true;
-      sessions.delete(key(token));
-      return false;
+      if (expires) {
+        if (expires > Date.now()) return true;
+        sessions.delete(key(token));
+        return false;
+      }
+      return verifyStateless(token);
     },
 
     /** Returns { status, cookie }. Five wrong passwords lock that visitor out for 15 minutes. */
@@ -64,14 +77,20 @@ export function createAuth() {
         return { status: 401 };
       }
       failures.delete(ip);
-      const token = randomBytes(32).toString('hex');
-      sessions.set(key(token), Date.now() + SESSION_MS);
+      const exp = Date.now() + SESSION_MS;
+      const token = process.env.VERCEL === '1'
+        ? (() => { const p = `${exp}.${randomBytes(16).toString('hex')}`; return `${p}.${signPayload(p)}`; })()
+        : randomBytes(32).toString('hex');
+      sessions.set(key(token), exp);
       return { status: 200, cookie: sessionCookie(req, token, SESSION_MS / 1000) };
     },
 
     signOut(req) {
       const token = readCookie(req);
-      if (token) sessions.delete(key(token));
+      if (token) {
+        sessions.delete(key(token));
+        if (process.env.VERCEL === '1') revoked.add(key(token));
+      }
       return sessionCookie(req, '', 0);
     },
   };
