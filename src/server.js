@@ -370,6 +370,17 @@ export function createApp(db, opts) {
   return http.createServer(createHandler(db, opts));
 }
 
+let vercelHandler;
+
+export default async function handler(req, res) {
+  if (!res.req) res.req = req;
+  if (!vercelHandler) {
+    const db = openDb(config.dbPath);
+    vercelHandler = createHandler(db);
+  }
+  return await vercelHandler(req, res);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const reachable = config.publicUrl || !['127.0.0.1', 'localhost', '::1'].includes(config.host);
   if (reachable && config.dashboardPassword.length < MIN_PASSWORD) {
