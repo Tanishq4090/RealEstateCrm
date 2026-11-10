@@ -1,6 +1,11 @@
 let handle;
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  if (req.url === '/__ping') {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain');
+    return res.end('ok ' + process.version);
+  }
   if (!res.req) res.req = req;
   try {
     if (!handle) {
@@ -19,4 +24,4 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: false, error: err?.message ?? String(err), code: err?.code }));
   }
-}
+};
