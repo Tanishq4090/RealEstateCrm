@@ -313,9 +313,9 @@ async function api(db, req, res, pathname, fetchImpl) {
   return send(res, 404, { error: 'Not found' });
 }
 
-export function createApp(db, { fetchImpl = fetch } = {}) {
+export function createHandler(db, { fetchImpl = fetch } = {}) {
   const auth = createAuth();
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     if (!res.req) res.req = req;
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -363,7 +363,11 @@ export function createApp(db, { fetchImpl = fetch } = {}) {
       if (!err.status) console.error(err);
       return send(res, err.status ?? 500, { ok: false, error: err.status ? err.message : 'Internal error', message: 'Something went wrong on our side. Offer a callback from the sales team.' });
     }
-  });
+  };
+}
+
+export function createApp(db, opts) {
+  return http.createServer(createHandler(db, opts));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
